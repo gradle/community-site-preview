@@ -1,3 +1,0 @@
-kotlinJvmLibrary {
-    javaVersion = 21
-}
