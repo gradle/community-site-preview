@@ -1015,7 +1015,7 @@
 
 
 <div><h1 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">#</a></h1>
-<p>Declarative Gradle <a href="../samples/">samples</a> require special nightly versions of Gradle and Android Studio, see below.
+<p>Declarative Gradle <a href="../samples/">samples</a> require nightly versions of Gradle and IDE/Plugins, see below.
 They all use the <a href="https://docs.gradle.org/current/userguide/gradle_wrapper.html">Gradle Wrapper</a> to point to the right Gradle version, so you don't have to worry about installing a specific version of Gradle.</p>
 <p>To try out the samples and see all of the features, you need to install a few other components as described below:</p>
 <ul>
@@ -1036,17 +1036,9 @@ They all use the <a href="https://docs.gradle.org/current/userguide/gradle_wrapp
 We recommend <a href="https://adoptium.net/temurin/releases/">Eclipse Temurin™ (OpenJDK)</a>.</p>
 <h2 id="ide">IDE<a class="headerlink" href="#ide" title="Permanent link">#</a></h2>
 <h3 id="android-studio">Android Studio<a class="headerlink" href="#android-studio" title="Permanent link">#</a></h3>
-<p>Download and install a special Android Studio Nightly release.
-You can find the promoted nightly releases in <a href="https://drive.google.com/drive/folders/19C5EMRgENKU_tOAwOVLcIGZ6Bbm63Q7V">this Google Drive folder</a> for macOS (Apple Silicon and Intel), Windows and Linux.
-Pick the most recent one that matches your operating system.</p>
-<p>Declarative features are only available on particular nightly releases.</p>
-<div class="admonition warn">
-<p class="admonition-title">Warn</p>
-<p>Note that these nightly builds are not signed/notarized and will require you to accept running them anyway.
-Also note that on macOS, these special Android Studio releases require to be in <code>~/Applications</code>.</p>
-</div>
+<p>Download and install an <a href="https://developer.android.com/studio/nightly">Android Studio Nightly</a> release.</p>
 <!-- omit in toc -->
-<h4 id="enable-more-declarative-features-in-studio">Enable more declarative features in Studio<a class="headerlink" href="#enable-more-declarative-features-in-studio" title="Permanent link">#</a></h4>
+<h4 id="enable-declarative-features-in-studio">Enable declarative features in Studio<a class="headerlink" href="#enable-declarative-features-in-studio" title="Permanent link">#</a></h4>
 <p>While syntax highlighting of <code>.gradle.dcl</code> files works out of the box in Studio nightlies, other features require flags to be enabled.</p>
 <ol>
 <li>Enable the <a href="https://plugins.jetbrains.com/docs/intellij/enabling-internal.html">IDE internal mode</a> by selecting <em>Help</em> -&gt; <em>Edit Custom Properties</em>. This selection opens the <code>idea.properties</code> file. If it does not exist, the IDE will prompt to create one. Add a line with <code>idea.is.internal=true</code>, save the file and restart the IDE.</li>
