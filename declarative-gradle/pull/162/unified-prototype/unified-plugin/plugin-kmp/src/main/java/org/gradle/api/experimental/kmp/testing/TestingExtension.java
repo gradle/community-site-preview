@@ -23,6 +23,9 @@ import org.gradle.declarative.dsl.model.annotations.Restricted;
 
 import java.util.Map;
 
+/**
+ * A DSL block that allows for configuring testing in a KMP project.
+ */
 @Restricted
 public interface TestingExtension {
     @Nested
