@@ -918,13 +918,15 @@
 <div><h1 id="ensuring-configuration-cache-compatibility">Ensuring Configuration Cache compatibility<a class="headerlink" href="#ensuring-configuration-cache-compatibility" title="Permanent link">#</a></h1>
 <p>The configuration and execution phase of builds always take the longest.
 You may already know about the build cache, which saves execution time by reusing outputs from past builds. 
-The new <a href="https://docs.gradle.org/current/userguide/configuration_cache.html">Configuration Cache</a> feature reuses configuration results from past builds to speed up the configuration phase.</p>
+Gradle's <a href="https://docs.gradle.org/current/userguide/configuration_cache.html">Configuration Cache</a>,
+introduced in 6.6 and becoming a preferred mode of execution in Gradle 10,
+reuses configuration results from past builds to speed up the configuration phase.</p>
 <p>If you keep an eye on <a href="https://roadmap.gradle.org">Gradle public roadmap updates</a>,
-you've probably noticed lots of work on the configuration cache.
-This feature is almost finished incubating -- expect to see a stable release soon.
-Still, there is a lot of work to be done in the plugins,
-many Gradle tasks still need to have configuration cache compatibility.
-We track the status on <a href="https://github.com/gradle/gradle/issues/13490">this GitHub Issue</a>, and any contributions are more than welcome.</p>
+you've probably noticed lots of improvements in Configuration Cache, and steady adoption in the ecosystem.
+Still, there is a lot of work to be done in the plugins.
+Many Gradle plugins still need to have configuration cache compatibility, and also updates might be needed in end user builds and convention plugins.
+For the community plugins for Gradle,
+we track the status on <a href="https://github.com/gradle/gradle/issues/13490">this GitHub Issue</a>, and any contributions are more than welcome!</p>
 <p>On this page, we focus on tips for plugins developers and contributors who want to fix Configuration Cache (CC) compatibility in their projects.</p>
 <h2 id="main-documentation">Main Documentation<a class="headerlink" href="#main-documentation" title="Permanent link">#</a></h2>
 <p>For Configuration Cache adoption and troubleshooting steps, you can already find information
