@@ -34,9 +34,9 @@ public final class AndroidSupport {
         }
     }
 
-    public static <T> void ifPresent(ListProperty<T> property, Action<List<T>> action) {
+    public static <T> void ifPresent(ListProperty<T> property, Action<T> action) {
         if (property.isPresent()) {
-            action.execute(property.get());
+            property.get().forEach(action::execute);
         }
     }
 }
