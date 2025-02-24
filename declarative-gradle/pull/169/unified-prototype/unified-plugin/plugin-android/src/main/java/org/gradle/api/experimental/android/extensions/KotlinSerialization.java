@@ -3,6 +3,7 @@ package org.gradle.api.experimental.android.extensions;
 import org.gradle.api.Action;
 import org.gradle.api.artifacts.dsl.Dependencies;
 import org.gradle.api.artifacts.dsl.DependencyCollector;
+import org.gradle.api.plugins.jvm.PlatformDependencyModifiers;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Nested;
 import org.gradle.declarative.dsl.model.annotations.Configuring;
@@ -33,7 +34,7 @@ public interface KotlinSerialization {
     @Restricted
     Property<Boolean> getJsonEnabled();
 
-    interface SerializationDependencies extends Dependencies {
+    interface SerializationDependencies extends Dependencies, PlatformDependencyModifiers {
         DependencyCollector getImplementation();
     }
 }
