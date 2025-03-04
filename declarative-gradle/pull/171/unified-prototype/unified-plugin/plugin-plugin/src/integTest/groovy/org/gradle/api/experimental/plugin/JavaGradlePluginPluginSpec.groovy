@@ -25,15 +25,15 @@ class JavaGradlePluginPluginSpec extends AbstractSpecification {
 
         buildFile << """
             javaGradlePlugin {
-                description = "An example Gradle plugin writen in Java"
+                description = "An example project defining a Gradle plugin writen in Java"
                 
                 dependencies {
                     implementation("com.google.guava:guava:33.4.0-jre")
                 }
                 
-                gradlePlugins {
-                    gradlePlugin("custom-ecosystem") {
-                        id = "org.gradle.example"
+                registers {
+                    id("org.gradle.example") {
+                        description = "An example plugin"
                         implementationClass = "org.gradle.example.ExamplePlugin"
                     }
                 }
@@ -68,15 +68,15 @@ class JavaGradlePluginPluginSpec extends AbstractSpecification {
         and:
         file("plugin/build.gradle.dcl") << """
             javaGradlePlugin {
-                description = "An example Gradle plugin writen in Java"
+                description = "An example project defining a Gradle plugin writen in Java"
                 
                 dependencies {
                     implementation("com.google.guava:guava:33.4.0-jre")
                 }
                 
-                gradlePlugins {
-                    gradlePlugin("custom-ecosystem") {
-                        id = "org.gradle.example"
+                registers {
+                    id("org.gradle.example") {
+                        description = "An example plugin"
                         implementationClass = "org.gradle.example.ExamplePlugin"
                     }
                 }
