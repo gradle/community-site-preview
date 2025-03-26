@@ -152,6 +152,12 @@ public class JvmPluginSupport {
             task.getConfigDirectory().convention(checkstyleDefinition.getConfigDirectory());
             task.setCheckstyleClasspath(checkstyleClasspath);
             task.setConfigFile(checkstyleDefinition.getConfigFile().getAsFile().get());
+
+            task.getReports().getHtml().getRequired().convention(true);
+            task.getReports().getHtml().getOutputLocation().convention(project.getLayout().getBuildDirectory().file("reports/checkstyle/" + sourceSet.getName() + ".html"));
+
+            task.getReports().getXml().getRequired().convention(task.getReports().getHtml().getRequired());
+            task.getReports().getXml().getOutputLocation().convention(project.getLayout().getBuildDirectory().file("reports/checkstyle/" + sourceSet.getName() + ".xml"));
         });
     }
 }
