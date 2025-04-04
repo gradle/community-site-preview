@@ -957,7 +957,7 @@ This flag allows Gradle to understand Software Types used in <code>*.kts</code> 
 For example, apply the <a href="https://plugins.gradle.org/plugin/org.gradle.experimental.jvm-ecosystem"><code>jvm-ecosystem</code> plugin</a> if you’re working with JVM projects.
 For more information, see the <a href="https://declarative.gradle.org/docs/reference/software-features/">Software Features reference</a> in the Declarative Gradle documentation.</p>
 <h3 id="3-convert-your-settings-files-to-use-dcl">3. Convert your settings files to use DCL<a class="headerlink" href="#3-convert-your-settings-files-to-use-dcl" title="Permanent link">#</a></h3>
-<p>First, rename your <code>/settings.gradle.kts</code> file to a <code>/settings.gradle.dcl</code> file.
+<p>First, rename your <code>settings.gradle.kts</code> file to a <code>settings.gradle.dcl</code> file.
 This may require you to comment out or relocate any features that are not currently supported by the DCL.
 For example, one commonly used feature that is not yet supported in DCL is <a href="https://docs.gradle.org/current/userguide/filtering_repository_content.html#sec:declaring-content-repositories">repository content filtering</a>. 
 Such logic must be moved into project-level build scripts if it is necessary to continue to use it (this particular feature is usually an optional performance optimization).</p>
@@ -972,13 +972,13 @@ There is no need to migrate everything at once.</p>
 You can add a new block to the bottom of your <code>build.gradle.kts</code> file using the <code>modelPublicType</code> from the <code>@SoftwareType</code> getter of the type you will be using.
 For example:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>plugins {
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  // … existing plugins used
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  // ... existing plugins used
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>}
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>// … other imperative configuration
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>// ... other imperative configuration
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>mySoftwareType {
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  // …declarative configuration
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>  // ... declarative configuration
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>}
 </span></code></pre></div>
 <p>Depending on the defaults and conventions implemented in this Software Type, your project's configuration, and how they may conflict, your project may or may not continue to be buildable at this point.</p>
