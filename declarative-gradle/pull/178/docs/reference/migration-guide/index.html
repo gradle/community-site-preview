@@ -945,7 +945,7 @@ For a detailed exploration of an actual migration, see the <a href="../migration
 Projects with minimal imperative logic, that use fewer third-party plugins, and do typical, idomatic configuration in the buildscript, are easier to convert.
 Projects that resemble our <a href="https://declarative.gradle.org/docs/getting-started/samples/">Declarative Samples</a>, or the output of Gradle's built-in <a href="https://docs.gradle.org/current/userguide/build_init_plugin.html">build init plugin</a> are strong candidates to migrate first.
 Starting with simpler projects allows you to verify that Declarative Gradle is properly setup, and makes debugging issues easier.</p>
-<p>Keep in mind that using Declarative Gradle is <em>not</em> an all or nothing process.
+<p>Keep in mind that using Declarative Gradle is <strong>not</strong> an all or nothing process.
 Gradle supports mixing DSLs within a multi-project build — Groovy and Kotlin DSLs can coexist, and so can DCL.
 This allows you to migrate a build incrementally, project by project.</p>
 <h3 id="2-prepare-the-project-for-declarative-gradle">2. Prepare the project for Declarative Gradle<a class="headerlink" href="#2-prepare-the-project-for-declarative-gradle" title="Permanent link">#</a></h3>
@@ -1022,10 +1022,10 @@ This project itself can also use Declarative Gradle.</p>
 <p>See the <a href="https://declarative.gradle.org/docs/reference/software-features/">Software Features reference</a> for more information on how to implement Software Types.
 It's also helpful to review <a href="https://github.com/gradle/declarative-gradle/tree/main/unified-prototype/unified-plugin">the prototype plugins</a> used to build the current test projects used in development.</p>
 <p>A Software Type plugin requires at least 4 parts:
-1. A <em>top-level DSL interface</em> that will be configured in the DCL file by any project using this Software Type
-2. A <em>Software Type plugin</em> that implements <code>Plugin&lt;Project&gt;</code> and has a <code>public abstract</code> getter annotated with <code>@SoftwareType</code> exposing the DSL interface
-3. An <em>"Ecosystem" plugin</em> that implements <code>Plugin&lt;Settings&gt;</code> and registers the software type via <code>@RegistersSoftwareTypes(MySoftwareTypePlugin.class)</code>
-4. <em>Registration of the new plugins</em> in the <code>build.gradle.dcl</code> file of the project that contains them using the <code>registers</code> block provided by the <code>javaGradlePlugin</code> Software Type's top-level extension </p>
+1. A <strong>top-level DSL interface</strong> that will be configured in the DCL file by any project using this Software Type
+2. A <strong>Software Type plugin</strong> that implements <code>Plugin&lt;Project&gt;</code> and has a <code>public abstract</code> getter annotated with <code>@SoftwareType</code> exposing the DSL interface
+3. An <strong>"Ecosystem" plugin</strong> that implements <code>Plugin&lt;Settings&gt;</code> and registers the software type via <code>@RegistersSoftwareTypes(MySoftwareTypePlugin.class)</code>
+4. <strong>Registration of the new plugins</strong> in the <code>build.gradle.dcl</code> file of the project that contains them using the <code>registers</code> block provided by the <code>javaGradlePlugin</code> Software Type's top-level extension </p>
 <p>How you implement these parts depends on the specific needs of the projects you are targeting, what plugins they use, and how they are configured.</p>
 <p>For a detailed example of this process, check out <a href="../migration-case-study/">a mini-"Case Study"</a>.
 As a starting point, consider copying a simple prototype like the <code>jvm-library</code> Declarative plugin.</p>
@@ -1042,7 +1042,7 @@ This feedback loop is fast, since your included build and project are part of th
 <p>Validating your build frequently after each change is highly recommended.
 Before migrating any configuration, you should verify that your custom Software Type is correctly wired into the build:
 - Create an empty type that does absolutely nothing
-- Use it in your existing project’s *.kts file 
+- Use it in your existing project’s <code>*.kts</code> file 
 - Confirm it does not affect your build (unlike using the pre-existing prototype plugins, which may have requirements or clash with your project’s conventions)</p>
 <p>This helps ensure that the integration is sound before you begin migrating real logic.</p>
 <p>You should save your project before attempting to migrate larger bits of configuration, such as the application of each 3rd party plugin, into your Declarative Software Type plugin’s logic.</p>
@@ -1060,7 +1060,7 @@ If you find that certain properties are always set to the same value across mult
 <h2 id="hints-tips-and-footguns">Hints, Tips and Footguns<a class="headerlink" href="#hints-tips-and-footguns" title="Permanent link">#</a></h2>
 <p>Add <code>@file:Suppress("UnstableApiUsage")</code> to the top of your KTS files during the intermediate stages to silence IDE warnings about many of the DCL types being <code>@Incubating</code>.</p>
 <p>DCL does not yet support Version Catalogs, so if you're using one, you'll need to convert your <code>libs.my.lib</code> dependency declarations to GAV coordinates like <code>org:mylib:1.4</code>.<br>
-These are supported within Kotlin DSL (<code>*.kts</code>) buildscripts using Software Types but <em>not</em> within fully declarative <code>*.dcl</code> files.
+These are supported within Kotlin DSL (<code>*.kts</code>) buildscripts using Software Types but <strong>not</strong> within fully declarative <code>*.dcl</code> files.
 This is annoying, but temporary until a better solution to reusable version declarations in DCL is made available in a future EAP.
 If your organization allows it, your AI assistant of choice is likely very able to do this conversion if you provide your Version Catalog file and dependencies block, and ask it to produce the same dependencies using inline GAV coordinates no longer referencing the catalog file.</p>
 <p>DCL files don't allow infix notation.  If you were previously applying plugins like:</p>
@@ -1082,7 +1082,7 @@ Make sure you are using the proper DCL annotations:</p>
 </span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>org.gradle.declarative.dsl.model.annotations.Restricted;
 </span></code></pre></div>
 <p>You might think to avoid some of the complexity of using an included build by making use of <code>buildSrc</code> to define your new plugins, especially if your build already uses <code>buildSrc</code> for other purposes.<br>
-This will <em>not</em> work for your Ecosystem Plugins.
+This will <strong>*not</strong> work for your Ecosystem Plugins.
 <code>buildSrc</code> is built by Gradle only <em>after</em> your build’s settings script is evaluated, so you can’t put <code>Plugin&lt;Settings&gt;</code>s in there and expect to be able to apply them in your <code>settings.gradle.kts/dcl</code> file.<br>
 You need to use an included build (or an external dependency) to define the plugins you want to use for this.</p>
 <p>Many DCL error messages are not yet polished and can be confusing.
