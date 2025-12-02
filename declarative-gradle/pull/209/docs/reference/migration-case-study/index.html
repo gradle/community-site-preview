@@ -1154,12 +1154,12 @@
 
 <div><h1 id="case-study-migrating-gradle-client">Case Study - Migrating Gradle-Client<a class="headerlink" href="#case-study-migrating-gradle-client" title="Permanent link">#</a></h1>
 <h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">#</a></h2>
-<p>In February and March 2025, using the version of Declarative Gradle available as EAP 3, we migrated the <a href="https://github.com/gradle/gradle-client"><code>gradle client</code></a> application to Declarative Gradle.
-This migration included defining a custom Project Type to represent the plugins and tools used by one of its projects, and replacing all Kotlin buildscripts with DCL files.
+<p>In 2025 we migrated the <a href="https://github.com/gradle/gradle-client"><code>gradle client</code></a> application to use Declarative Gradle build scripts.</p>
+<p>This migration included defining several custom Project Features to represent the plugins and tools used by one of its projects, and replacing all Kotlin buildscripts with DCL files.
 Doing this gave us the opportunity to explore the DCL migration process in depth and identify common stumbling blocks and areas for improvement.</p>
 <p>This document captures our experiences and presents them as a case study.
 It highlights pain points, gotchas, and other insights surfaced by an actual migration.
-You can view the results of the migration by comparing <a href="https://github.com/gradle/gradle-client/tree/8d5c4fefb10d7feae402fcae3106310a0495f535">the initial state of the repository</a> with the <a href="https://github.com/gradle/gradle-client/tree/96d2b0adecfc9d622b77f1d67bbad33e8d752da3">final post-migration state</a>.</p>
+You can view the results of the migration by comparing <a href="https://github.com/gradle/gradle-client/tree/8d5c4fefb10d7feae402fcae3106310a0495f535">the initial state of the repository</a> with the <a href="https://github.com/gradle/gradle-client/tree/8a322e6e5f8878fe1228dea7e2e1e3683ef219f0">final post-migration state</a>.</p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>The Gradle Client is a desktop application built with Kotlin Compose Desktop that uses the Gradle Tooling API to provide a rich GUI for analyzing and manipulating Declarative Gradle builds.
 The particulars of what this application does when run aren’t especially relevant to the migration process, however.  </p>
@@ -1174,19 +1174,18 @@ Our goal was to explore the most interesting parts of the process early on.</p>
 <p>For your own migrations, as noted in our guide, we recommend starting with simpler projects—those that closely resemble our declarative samples.
 These are more likely to work with minimal effort and help build confidence before tackling complex parts of your build.</p>
 <h2 id="preparing-for-migration">Preparing for Migration<a class="headerlink" href="#preparing-for-migration" title="Permanent link">#</a></h2>
-<p>For the migration of the Gradle Client project, and to support the latest Declarative Gradle Configuration Language (DCL), we eventually upgraded the Gradle wrapper to version <a href="https://services.gradle.org/distributions/gradle-8.14-milestone-4-bin.zip">gradle-8.14-milestone-4</a>.
-During the migration, we often used nightly snapshot versions to access DCL features that were still under active development.
-By the time you read this, a later milestone or release candidate of Gradle 8.14 may be available for use in your own migrations.</p>
+<p>For the migration of the Gradle Client project, and to support the latest Declarative Gradle Configuration Language (DCL), we often used nightly snapshot versions to access DCL features that were still under active development.
+By the time you read this, a later milestone or release candidate of Gradle  may be available for use in your own migrations.  See the <a href="https://gradle.org/releases/">Gradle releases page</a> to find the latest versions available.</p>
 <p>The Declarative Gradle prototype includes a Kotlin Multiplatform (KMP) prototype plugin.
 As the <code>:gradle-client</code> project is a Kotlin Multiplatform project (which only actually targets the JVM), we applied the corresponding Ecosystem Plugin in the root project's existing <code>settings.gradle.kts</code> file:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>plugins {
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    id("org.gradle.experimental.kmp-ecosystem").version("0.1.41")
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    id("org.gradle.experimental.kmp-ecosystem").version("0.1.48")
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>}
 </span></code></pre></div>
 <p>Next, we renamed  <code>settings.gradle.kts</code> to <code>settings.gradle.dcl</code>.</p>
 <p>Because the formats are similar for most common settings, the contents didn’t change significantly during the conversion.</p>
 <p>You can compare the changes directly:
-- <a href="https://github.com/gradle/gradle-client/blob/96d2b0adecfc9d622b77f1d67bbad33e8d752da3/settings.gradle.dcl">Resulting <code>settings.gradle.dcl</code> file</a>
+- <a href="https://github.com/gradle/gradle-client/blob/856e92c3746be5c0ab2a3c8fac8e5b88066c0bcf/settings.gradle.dcl">Resulting <code>settings.gradle.dcl</code> file</a>
 - <a href="https://github.com/gradle/gradle-client/blob/8d5c4fefb10d7feae402fcae3106310a0495f535/settings.gradle.kts">Original <code>settings.gradle.kts</code> file</a></p>
 <p>A few changes stand out in the converted settings file:
 - There’s no need for <code>@file:Suppress("UnstableApiUsage")</code>, this is done automatically for Declarative files
@@ -1202,12 +1201,12 @@ Fortunately, migrations can be done incrementally, both across the build and wit
 Just like you can mix Groovy and Kotlin DSLs in a multi-project build, you can also mix declarative and non-declarative build scripts.
 Inside each individual project’s buildscript, you can incrementally introduce declarative Project Types alongside imperative configuration logic.</p>
 <p>To get started, we set the <code>org.gradle.kotlin.dsl.dcl=true</code> flag in the root project's <code>gradle.properties</code> file.
-We could then add a Project Type to an existing build file and move configuration code into that Project Type piece-by-piece while deleting the corresponding code from the remaining “imperative” part of our build script outside its declaration.
-This workflow made it easy to confirm correctness along the way, such as ensuring dependencies were still available for compilation after moving them into the Project Type.</p>
-<p>This approach is also helpful because there is always a clear visual boundary between what parts of the build have already been “declarativized” and what parts are still pending.</p>
+We could then add a Project Type to an existing build file and move configuration code into that Project Type piece-by-piece while deleting the corresponding code from the remaining “imperative” part of our build script outside its declaration.</p>
+<p>This workflow made it easy to confirm correctness along the way, such as ensuring dependencies were still available for compilation after moving them into the Project Type.</p>
+<p>This approach is also helpful because there is always a clear visual boundary between what parts of the build have already been made declarative and what parts are still pending.</p>
 <h2 id="using-existing-prototype-plugins">Using Existing Prototype Plugins<a class="headerlink" href="#using-existing-prototype-plugins" title="Permanent link">#</a></h2>
-<p>Core functionality, such as typical <code>implementation</code>, <code>api</code>, and test dependencies for library projects in common ecosystems, is already supported by the existing Project Types provided by Gradle's prototype plugins.
-Migrating project dependencies declared in the top-level <code>dependencies</code> block to the dependency support provided by Project Types served as a good test of our DCL setup.</p>
+<p>Core functionality, such as typical <code>implementation</code>, <code>api</code>, and test dependencies for library projects in common ecosystems, is already supported by the existing Project Types provided by Gradle's prototype plugins.</p>
+<p>Migrating project dependencies declared in the top-level <code>dependencies</code> block to the dependency support provided by Project Types served as a good test of our DCL setup.</p>
 <p>In the <code>gradle-client</code> build, the <code>:build-action</code> project was a straightforward candidate for migration. 
 As a plain Java library, it was fully compatible with the existing <code>javaLibrary</code> prototype Project Type without any modifications.
 The resulting <code>build-action/build.gradle.dcl</code> is simple and expressive:</p>
@@ -1215,8 +1214,8 @@ The resulting <code>build-action/build.gradle.dcl</code> is simple and expressiv
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    javaVersion = 8
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    dependencies {
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        implementation("org.gradle:gradle-tooling-api:8.14-milestone-4")
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        implementation("org.gradle:gradle-declarative-dsl-tooling-models:8.14-milestone-4")
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        implementation("org.gradle:gradle-tooling-api:9.2.0-milestone-2")
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        implementation("org.gradle:gradle-declarative-dsl-tooling-models:9.2.0-milestone-2")
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    }
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>}
 </span></code></pre></div>
@@ -1236,7 +1235,7 @@ The resulting <code>build-action/build.gradle.dcl</code> is simple and expressiv
 </span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>    }
 </span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>}
 </span></code></pre></div>
-<p>The DCL version is more concise and communicates the same intented "project definition".
+<p>The DCL version is more concise and communicates the same intended "project definition".
 The main disadvantage is the use of hardcoded GAV (Group:Artifact:Version) strings for dependencies, rather than the type-safe references provided by the Version Catalog in the original. 
 This is a temporary limitation, and support for shared version declarations is expected in a future EAP.</p>
 <p>The migration of the <code>:mutations-demo</code> project is similarly straightforward.<br>
@@ -1244,7 +1243,7 @@ It uses Kotlin and was migrated using the <code>kotlinJvmLibrary</code> prototyp
 <p>The new <code>mutations-demo/build.gradle.dcl</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>kotlinJvmLibrary {
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    dependencies {
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        implementation("org.gradle:gradle-declarative-dsl-core:8.14-milestone-7")
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        implementation("org.gradle:gradle-declarative-dsl-core:9.2.0-milestone-2")
 </span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    }
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>}
 </span></code></pre></div>
@@ -1262,14 +1261,9 @@ It uses Kotlin and was migrated using the <code>kotlinJvmLibrary</code> prototyp
 <p>The existing prototype plugins were insufficient for a more complex project, such as the <code>:gradle-client</code> project (not to be confused with the overall build itself).</p>
 <p>While <code>:gradle-client</code> is a Kotlin application (technically a KMP application that only targets the JVM), it uses features and plugins that fall outside the scope of the existing prototype plugins.
 For example, SQL Delight, Detekt, Compose, and other functionality is not part of KMP, so support for this is not present.  </p>
-<p>As a result, we could not simply apply ad configure the existing <code>kotlinApplication</code> Project Type without removing vital features from the project.
-Like all our prototype declarative plugins, that plugin does not yet support composition or extensibility, features that would allow combining functionality like <code>kotlinApplication</code> with SQLDelight or Detekt in a modular way.</p>
-<p>Support for Composition and Extensibility is a highly requested and essential feature for the DCL. 
-It is actively in development and expected in a future EAP.</p>
-<p>The approach we used for this project is the one outlined in our <a href="../migration-guide/">Migration Guide</a>: 
-We setup an included build to define a new plugin.
-This plugin implements a new Project Type that contains built-in support for <em>all</em> the specific features used by this project.
-We also defined a new Ecosystem Plugin that exposes this Project Type so that we can use it for projects in our build.</p>
+<p>As a result, we could not simply apply and configure the existing <code>kotlinApplication</code> Project Type without removing vital features from the project.</p>
+<p>To address this, we set up an included build to define some new plugins that would provide the necessary project features for SQL Delight, Detekt, and Compose.
+We also defined a new Ecosystem Plugin that exposes these Project Features so that we can use them for projects in our build.</p>
 <h3 id="setting-up-the-included-build">Setting up the Included Build<a class="headerlink" href="#setting-up-the-included-build" title="Permanent link">#</a></h3>
 <p>As explained in the Migration Guide, we defined our custom plugins using an included build instead of <code>buildSrc</code>. 
 This is because <code>buildSrc</code> is built after the project's settings script is evaluated, so it can't contain a <code>Plugin&lt;Settings&gt;</code> to be used by the build.
@@ -1282,90 +1276,94 @@ Our Ecosystem Plugin will be implemented as such a settings plugin.</p>
 </span></code></pre></div>
 <p>Then, we added a <code>build-logic/settings.gradle.dcl</code> file and applied the <code>org.gradle.experimental.plugin-ecosystem</code> plugin to it:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>plugins {
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    id("org.gradle.experimental.plugin-ecosystem") version("0.1.41")
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    id("org.gradle.experimental.plugin-ecosystem") version("0.1.48")
 </span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>}
 </span></code></pre></div>
-<p>This allows us to use the <code>javaGradlePlugin</code> plugin, which is necessary for <em>declaratively</em> writing Gradle plugins—like the custom Project Types we’re about to create here.</p>
-<p>Next, we created a <code>build-logic/plugins</code> subproject that contains our new Project Types.<br>
+<p>This allows us to use the <code>javaGradlePlugin</code> plugin, which is necessary for <em>declaratively</em> writing Gradle plugins—like the custom Project Features we’re about to create here.</p>
+<p>Next, we created a <code>build-logic/plugins</code> subproject that contains our new Project Features.<br>
 We included the project in the included build’s <code>settings.gradle.dcl</code> as usual.
 In <code>build-logic/plugins</code>, we created a <code>build.gradle.dcl</code> file with an empty top-level <code>javaGradlePlugin {}</code> block. 
 This is where we will register our new plugins.</p>
-<p>While we could have registered the plugins directly in the root project of the <code>:build-logic</code> build, this extra level of separation could be useful if you have other imperative logic to migrate that wouldn’t be entirely contained in new Project Types.</p>
+<p>While we could have registered the plugins directly in the root project of the <code>:build-logic</code> build, this extra level of separation could be useful if you have other imperative logic to migrate that wouldn’t be entirely contained in new Project Features.</p>
 <p>This structure allows for:
 - Creating other plugins, such as other settings plugins that provide additional task types or global configuration that you could then apply to your build.
-- Keeping different types of logic isolated from the projects that produce your Project Type plugins.</p>
-<h3 id="writing-a-new-project-type-plugin">Writing a New Project Type Plugin<a class="headerlink" href="#writing-a-new-project-type-plugin" title="Permanent link">#</a></h3>
-<p>An initial idea for implementing our custom Project Type might be to extend an existing one like <code>kotlinApplication</code>, to take advantage of support for dependencies and SDK versioning already implemented there. 
-However, due to a technical limitation, each Project Type plugin can expose only one Project Type.
-So we'll have to create a brand new plugin.</p>
+- Keeping different types of logic isolated from the projects that produce your Project Feature plugins.</p>
+<h3 id="writing-a-new-project-feature-plugin">Writing a New Project Feature Plugin<a class="headerlink" href="#writing-a-new-project-feature-plugin" title="Permanent link">#</a></h3>
 <p>The project we’re migrating is a Compose Desktop application written in Kotlin.
-To support it declaratively, we’ll define a custom Project Type plugin tailored to its needs. 
-In <code>build-logic/plugins/src/main/java</code>, we begin by adding a new plugin class: <code>org.gradle.client.softwaretype.CustomDesktopComposeApplicationPlugin</code> that implements <code>Plugin&lt;Project&gt;</code> and has a <code>public void apply(Project)</code> - just like every Gradle project-based plugin.</p>
-<p>The <code>build-logic/plugins/src/main/java/org/gradle/client/softwaretype
-/CustomDesktopComposeApplicationPlugin.java</code> file begins like this:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>package org.gradle.client.softwaretype;
+To support it declaratively, we’ll define a custom Project Feature plugin that provides Compose functionality. 
+In <code>build-logic/plugins/src/main/java</code>, we begin by adding a new plugin class: <code>org.gradle.client.projectfeatures.compose.ComposeProjectFeaturePlugin</code> that implements <code>Plugin&lt;Project&gt;</code> and has a <code>public void apply(Project)</code> - just like every Gradle project-based plugin.</p>
+<p>The <code>build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java</code> file begins like this:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>package org.gradle.client.projectfeatures.compose;
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>import org.gradle.api.Plugin;
 </span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>import org.gradle.api.Project;
 </span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>public abstract class CustomDesktopComposeApplicationPlugin implements Plugin&lt;Project&gt; {
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>public abstract class ComposeProjectFeaturePlugin implements Plugin&lt;Project&gt; {
 </span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    @Override
 </span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    public void apply(Project project) {}
 </span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>}
 </span></code></pre></div>
-<p>The name of the Project Type class itself does not need to be concise since it is not visible to consumer builds.
-What the consumer will see is the name of the declarative extension exposed by the plugin. 
-For clarity and usability, we chose a short but descriptive extension name: <code>desktopComposeApp</code>.</p>
-<p>To support configuring our Project Type, we need to define a model interface (i.e., the extension type) that backs it. 
-This interface defines the DSL that consumers will use declaratively.</p>
-<p>In <code>build-logic/plugins/src/main/java/org/gradle/client/softwaretype/CustomDesktopComposeApplication.java</code> we add an empty interface:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>package org.gradle.client.softwaretype;
+<p>The name of the Project Feature class itself does not need to be concise since it is not visible to consumer builds.
+What the consumer will see is the name of the declarative definition exposed by the plugin. 
+For clarity and usability, we chose a short but descriptive definition name: <code>compose</code>.</p>
+<p>To support configuring our Project Feature, we need to define a definition interface that represents the DSL that consumers will configure declaratively, and a build model interface that represents the low-level details of what configuration the feature exposes to build logic.</p>
+<p>In <code>build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/Compose.java</code> we add an empty interface that extends the <code>Definition</code> interface:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>package org.gradle.client.projectfeatures.compose;
 </span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>public interface CustomDesktopComposeApplication {}
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>import org.gradle.api.internal.plugins.Definition;
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>public interface Compose extends Definition&lt;ComposeBuildModel&gt;{}
+</span></code></pre></div>
+<p>In <code>build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeBuildModel.java</code> we add an empty interface that extends the <code>BuildModel</code> interface:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>package org.gradle.client.projectfeatures.compose;
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>import org.gradle.api.internal.plugins.BuildModel;
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>public interface ComposeBuildModel extends BuildModel {}
 </span></code></pre></div>
 <p>That’s all we need to get started.</p>
-<p>Next we need to connect the plugin class to the extension.
-We do this by annotating a getter on the plugin class with <code>@SoftwareType</code>.</p>
-<p>This gives us the following <code>build-logic/plugins/src/main/java/org/gradle/client/softwaretype/CustomDesktopComposeApplicationPlugin.java</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>package org.gradle.client.softwaretype;
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>import org.gradle.api.Plugin;
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>import org.gradle.api.Project;
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>import org.gradle.api.internal.plugins.software.SoftwareType;
-</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>
-</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>@SuppressWarnings("UnstableApiUsage")
-</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>public abstract class CustomDesktopComposeApplicationPlugin implements Plugin&lt;Project&gt; {
-</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a>    public static final String DESKTOP_COMPOSE_APP = "desktopComposeApp";
-</span><span id="__span-9-10"><a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a>
-</span><span id="__span-9-11"><a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    @SoftwareType(name = DESKTOP_COMPOSE_APP, modelPublicType = CustomDesktopComposeApplication.class)
-</span><span id="__span-9-12"><a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    public abstract CustomDesktopComposeApplication getDesktopComposeApp();
-</span><span id="__span-9-13"><a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
-</span><span id="__span-9-14"><a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    @Override
-</span><span id="__span-9-15"><a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>    public void apply(Project project) {}
-</span><span id="__span-9-16"><a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a>}
+<p>Next we need to connect the plugin class to the feature.
+We do this by annotating the plugin class with <code>@BindsProjectFeature</code> specifying a <code>ProjectFeatureBinding</code> class that connects the definition and build model types and registers the feature name that will be used in DCL files.</p>
+<p>This gives us the following <code>build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>package org.gradle.client.projectfeatures.compose;
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>import org.gradle.api.Plugin;
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>import org.gradle.api.Project;
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>import org.gradle.api.internal.plugins.BindsProjectFeature;
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>@SuppressWarnings("UnstableApiUsage")
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>@BindsProjectFeature(ComposeProjectFeaturePlugin.Binding.class)
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>public abstract class CustomDesktopComposeApplicationPlugin implements Plugin&lt;Project&gt; {
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    @Override
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>    public void apply(Project project) {}
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>    static class Binding implements ProjectFeatureBinding {
+</span><span id="__span-10-14"><a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a>        @Override
+</span><span id="__span-10-15"><a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a>        public void bind(ProjectFeatureBindingBuilder builder) {
+</span><span id="__span-10-16"><a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a>            builder.bindProjectFeatureToBuildModel("compose", Compose.class, KotlinMultiplatformBuildModel.class,
+</span><span id="__span-10-17"><a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a>                (context, definition, buildModel, parent) -&gt; {
+</span><span id="__span-10-18"><a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a>                }
+</span><span id="__span-10-19"><a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a>            );
+</span><span id="__span-10-20"><a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a>        }
+</span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    }
+</span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>}
 </span></code></pre></div>
+<p>Notice that the call to the binding method provides all the necessary information to connect our feature to the declarative DSL.<br>
+First, we specify the name of the feature as it will appear in DCL files: <code>compose</code>.<br>
+Second, we specify the definition type of our feature: <code>Compose.class</code>.<br>
+Third, we specify the target type that the feature can be bound to: <code>KotlinMultiplatformBuildModel.class</code> (since our feature is intended to be used with KMP projects).<br>
+Finally, we provide a lambda that will be called to configure the build model based on the definition.</p>
+<p>We specified the target type as <code>KotlinMultiplatformBuildModel.class</code> because we want this feature to be available for KMP projects.<br>
+We are binding to a <em>build model</em> type, rather than a <em>definition</em> type.
+We <em>could</em> bind to a definition type if we wanted to be very specific, but we should be interacting with our target through its build model, so as long as the build model conforms to our expectations, we don't actually care what the target definition is.
+So instead, we are saying that this feature will work with <em>any</em> definition that has a <code>KotlinMultiplatformBuildModel</code> build model type (or subtype).
+This means that our feature can be used with a <code>KmpApplication</code> definition, a <code>KmpLibrary</code> definition, or any other KMP-based definition that has a <code>KotlinMultiplatformBuildModel</code> build model.</p>
 <p>We add <code>@SuppressWarnings("UnstableApiUsage")</code> to the plugin class to silence distracting IDE warnings related to the use of in-development Declarative API types.
 It’s a good idea to add this annotation to most of the Java classes in your plugin so that other actionable warnings are more visible.</p>
-<p>Note that we haven’t yet written a concrete class - only interfaces and abstract classes. 
-The getter method is left abstract as well.
-In our own migration, the only concrete types in the plugin project were static utility classes — which could have been abstract too.
-This is expected when writing a Declarative Project Type plugin - it should rely on Gradle to instantiate everything automatically, including providing implementations for abstract methods like <code>getDesktopComposeApp()</code> that the plugin will use to access the data configured in the extension by a build using it in a DCL file.</p>
-<p>At this point, we’ve completed the minimum setup needed to define a (currently empty) Project Type. 
+<p>Note that our definition is not a concrete class, nor is our build model.
+This is expected when writing a Declarative Project Feature plugin - it should rely on Gradle to instantiate most objects automatically.</p>
+<p>At this point, we’ve completed the minimum setup needed to define a (currently empty) Project Feature. 
 All that remains is to package the plugin for use.</p>
-<p>In <code>build-logic/plugins/build.gradle.dcl</code>, we add:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>javaGradlePlugin {
-</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    description = "Declarative plugins containing custom project types for the gradle-client project."
-</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
-</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    registers {
-</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        id("org.gradle.client.softwaretype.desktop-compose-application") {
-</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>            description = "A custom project type for the Gradle Client's desktop Compose application"
-</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>            implementationClass = "org.gradle.client.softwaretype.CustomDesktopComposeApplicationPlugin"
-</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>        }
-</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>    }
-</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>}
-</span></code></pre></div>
-<p>This is how we use the Declarative prototype version of the Java Gradle Plugin Plugin (provided by the prototype ecosystem) to publish our custom Project Type plugin.
-At this point, the plugin is usable from any project in the Gradle Client build.</p>
 <h3 id="writing-a-new-ecosystem-plugin">Writing a New Ecosystem Plugin<a class="headerlink" href="#writing-a-new-ecosystem-plugin" title="Permanent link">#</a></h3>
 <p>In Declarative Gradle, you don’t apply plugins in project <code>build.gradle.dcl</code> files.
 Why?
@@ -1373,38 +1371,44 @@ Because plugin application is imperative.</p>
 <p>Telling Gradle to <em>apply</em> a plugin is <em>build logic</em> dealing with <em>how</em> a build behaves, instead of defining <em>what</em> a project represents.
 Plugins contain imperative logic and are applied imperatively, so they do not belong in a project’s DCL file.</p>
 <p>You can read more about Declarative Gradle design principles in our <a href="https://blog.gradle.org/declarative-gradle-first-eap#developer-first-configuration">blog post</a>.</p>
-<p>To make a Project Type available to a project, you apply an Ecosystem Plugin.
+<p>To make a Project Feature available to a project, you apply an Ecosystem Plugin.
 An Ecosystem Plugin:
 - Implements <code>Plugin&lt;Settings&gt;</code>
 - Is applied prior to project configuration
-- Tells Gradle about Project Type(s) that will be used by projects in a build</p>
+- Tells Gradle about Project Types and/or Features that will be used by projects in a build</p>
 <p>In our case, we create our Ecosystem Plugin in  <code>build-logic/plugins/src/main/java/org/gradle/client/ecosystem/CustomEcosystemPlugin.java</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>package org.gradle.client.ecosystem;
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
 </span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>import org.gradle.api.Plugin;
 </span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>import org.gradle.api.initialization.Settings;
-</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>import org.gradle.api.internal.plugins.software.RegistersSoftwareTypes;
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>import org.gradle.api.internal.plugins.software.RegistersProjectFeatures;
 </span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>import org.gradle.client.softwaretype.CustomDesktopComposeApplicationPlugin;
 </span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>
 </span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
-</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>@RegistersSoftwareTypes({CustomDesktopComposeApplicationPlugin.class})
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>@RegistersProjectFeatures({ComposeProjectFeaturePlugin.class})
 </span><span id="__span-11-10"><a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>public abstract class CustomEcosystemPlugin implements Plugin&lt;Settings&gt; {
 </span><span id="__span-11-11"><a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a>    @Override
 </span><span id="__span-11-12"><a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a>    public void apply(Settings settings) {}
 </span><span id="__span-11-13"><a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a>}
 </span></code></pre></div>
-<p>Although this is a complete implementation of a plugin, everything important is accomplished via the @RegistersSoftwareTypes annotation so the <code>apply(Settings)</code> method is left empty.
+<p>Although this is a complete implementation of a plugin, everything important is accomplished via the <code>@RegistersProjectFeatures</code> annotation so the <code>apply(Settings)</code> method is left empty.
 This is typical for Ecosystem Plugins, and in the future, we may streamline this boilerplate even further.</p>
-<p>Next, we register the Ecosystem Plugin in <code>build-logic/plugins/build.gradle.dcl</code> by adding another entry to the <code>registers</code> block:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>id("org.gradle.client.ecosystem.custom-ecosystem") {
-</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    description = "A custom ecosystem plugin registering the Project Type plugins provided by this project"
-</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>    implementationClass = "org.gradle.client.ecosystem.CustomEcosystemPlugin"
-</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>}
+<p>Next, we register the Ecosystem Plugin in <code>build-logic/plugins/build.gradle.dcl</code> by adding an entry to the <code>registers</code> block:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>javaGradlePlugin {
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>    description = "Declarative plugins containing custom project features for the gradle-client project."
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>    registers {
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>        id("org.gradle.client.ecosystem.custom-ecosystem") {
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>            description = "A custom ecosystem plugin registering the Project Feature plugins provided by this project"
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>            implementationClass = "org.gradle.client.ecosystem.CustomEcosystemPlugin"
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>        }
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>    }
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>}
 </span></code></pre></div>
-<p>That’s actually all that’s needed for our Ecosystem Plugin — its sole purpose is to register Project Type plugins so they can be used declaratively in the build.</p>
-<p>It’s important to keep in mind that if our vision for Declarative Gradle succeeds then writing your own Ecosystem Plugins won’t be something you’ll need to do for every project.
+<p>That’s actually all that’s needed for our Ecosystem Plugin — its sole purpose is to register Project Feature plugins so they can be used declaratively in the build.</p>
+<p>It’s important to understand that if our vision for Declarative Gradle comes to fruition, then writing your own Ecosystem Plugins won’t be something you’ll need to do for every project.
 Our long-term goal is to offer a large assortment of Ecosystem Plugins available for popular frameworks and project types.
-Combined with our pending work on Composability and Extensibility, migrating to a Declarative build should feel more like ordering a multi-course meal from a curated menu than cooking everything from scratch yourself.</p>
+Combined with our work on Composability and Extensibility, migrating to a Declarative build should feel more like ordering a multi-course meal from a curated menu than cooking everything from scratch yourself.</p>
 <p>Before going any further, now is a good time to sanity check our setup by applying our new Project Type to the <code>:gradle-client</code> project.
 Even though the plugin currently does absolutely nothing, that’s expected and is not a problem.
 A Kotlin DSL buildscript can use Project Types alongside imperative logic – so for now, the imperative logic will handle 100% of the work. 
@@ -1416,14 +1420,18 @@ We’re simply putting the Project Type in place to verify the relevant wiring i
 </span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>}
 </span></code></pre></div>
 <p>In the <code>gradle-client/build.gradle.kts</code> file, we add to following line to the bottom of the file:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>desktopComposeApp {}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>kotlinApplication {
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>    compose {
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>        // No configuration yet
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>    }
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>}
 </span></code></pre></div>
 <p>At this point, we should be able to build the project as usual.</p>
-<p>While our Project Type isn’t doing anything yet, a successful build confirms that Gradle has properly detected and configured it.</p>
+<p>While our Project Feature isn’t doing anything yet, a successful build confirms that Gradle has properly detected and configured it.</p>
 <h3 id="beginning-to-migrate-the-projects-configuration-dependencies">Beginning to Migrate The Project’s Configuration: Dependencies<a class="headerlink" href="#beginning-to-migrate-the-projects-configuration-dependencies" title="Permanent link">#</a></h3>
 <p>We started our migration with dependencies. 
 This is often the best place to begin — dependencies are foundational to any build, and it's relatively easy to verify their correctness.</p>
-<p>To migrate dependencies to the new DSL, we need a location within the SoftwareType’s extension where they can be declared.
+<p>To migrate dependencies to the new DSL, we need a location within the DSL where they can be declared.
 For example, in a typical Kotlin project (like <code>:mutations-demo</code>), you’d see:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>kotlinJvmLibrary {
 </span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    dependencies {
@@ -1464,110 +1472,31 @@ In essence, to declare dependencies declaratively, we expose a nested extension 
 <p>When Gradle processes a DCL (or Kotlin DSL) file and finds Project Types it looks within their extension classes for any <code>@Nested</code> types that implement <code>Dependencies</code>, and records the <code>DependencyCollector</code> getter methods.
 This allows method calls like <code>implementation(&lt;some coordinates string&gt;)</code> or <code>api(project(&lt;some project&gt;))</code> to map correctly to overloads of the <code>DependencyCollector.add(...)</code> present on the collectors returned by those getters.
 It may look like magic, but it’s well-supported, and tools like IDEs understand these conventions through the Gradle Tooling API.</p>
-<h4 id="option-1-create-a-new-custom-dependencies-type">Option 1: Create a new custom Dependencies type<a class="headerlink" href="#option-1-create-a-new-custom-dependencies-type" title="Permanent link">#</a></h4>
-<p>To get dependencies working in our custom Project Type, we can define a simplified dependencies type and expose it from our plugin. 
-We start by creating a new interface at <code>build-logic/plugins/src/main/java/org/gradle/client/softwaretype/CustomDependencies.java</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>package org.gradle.client.softwaretype;
-</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
-</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>import org.gradle.api.artifacts.dsl.Dependencies;
-</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>import org.gradle.api.artifacts.dsl.DependencyCollector;
-</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>import org.gradle.api.plugins.jvm.PlatformDependencyModifiers;
-</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>
-</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>public interface CustomDependencies extends Dependencies {
-</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>    DependencyCollector getImplementation();
-</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>    DependencyCollector getRuntimeOnly();
-</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>    DependencyCollector getCompileOnly();
-</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>}
-</span></code></pre></div>
-<p>We expose this from the SoftwareType extension, in <code>build-logic/plugins/src/main/java/org/gradle/client/softwaretype/CustomDesktopComposeApplication.java</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>public interface CustomDesktopComposeApplication {
-</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    @Nested
-</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>    CustomDependencies getDependencies();
-</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>
-</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    @Configuring
-</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>    default void dependencies(Action&lt;? super CustomDependencies&gt; action) {
-</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>        action.execute(getDependencies());
-</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>    }
-</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>}
-</span></code></pre></div>
-<p>Now in <code>gradle-client/build.gradle.kts</code>, you can declare dependencies using the new custom SoftwareType:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>desktopComposeApp {
-</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    dependencies {
-</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>        implmentation(“myGroup:myModule:myVersion”)
-</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>        compileOnly(“myGroup2:myModule2:myVersion2”)
-</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>    }
-</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>}
-</span></code></pre></div>
-<p>DCL files do not currently support Version Catalogs, which many modern projects rely on.
-However, Kotlin DSL files (*.kts) <em>do</em> support them.
-So, if you’ve verified everything works in Kotlin DSL, you may need to manually replace Version Catalog references with inline strings to transition to a DCL file.</p>
-<p>This can feel like a step backward, but it’s a known limitation. 
-We're actively exploring solutions. 
-In the meantime, AI tools can help: if you copy an existing Version Catalog and a dependencies block using it into one and ask it to inline the use of the catalog, the translations are often perfectly correct. </p>
-<p>At this stage we can declare dependencies using the new nested blocks, but these declarations don’t yet affect the build.
-That’s because <code>DependencyCollector</code> does exactly what it says: it collects dependency declarations. 
-It does not resolve them or apply them to a project. 
-To make these dependencies functional, we must wire them into the appropriate <code>Configuration</code> that will resolve them.</p>
-<p>You can see how this is done in the <a href="https://github.com/gradle/declarative-gradle/tree/v0.1.41/unified-prototype/unified-plugin/plugin-jvm/src/main/java/org/gradle/api/experimental/jvm/internal/JvmPluginSupport.java#L50">prototype JVM plugin</a>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>project.getConfigurations().getByName(sourceSet.getImplementationConfigurationName())
-</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>            .getDependencies().addAllLater(dependencies.getImplementation().getDependencies());
-</span></code></pre></div>
-<p>For every collector, we must find the appropriate resolvable <code>Configuration</code> and use <code>addAllLater</code> so that Gradle knows to lazily add the collected dependencies from that collector to that configuration during dependency resolution.</p>
-<p>Once this wiring is in place, we can move dependency declarations from the imperative top-level <code>dependencies</code> block to the corresponding collector in our Project Type’s new nested <code>dependencies</code> block.
-If everything is wired correctly, our build should continue to function identically after each dependency is moved.</p>
-<h4 id="option-2-reuse-an-existing-dependencies-type">Option 2: Reuse an existing Dependencies type<a class="headerlink" href="#option-2-reuse-an-existing-dependencies-type" title="Permanent link">#</a></h4>
-<p>While creating a custom dependencies block is useful, many projects may not need to define one from scratch.
-In fact, the existing <code>dependencies</code> blocks defined in our prototype plugins should be sufficient for most use cases.</p>
-<p>If your build already includes a dependency on one of our prototype plugins (e.g., our included build’s <code>:plugins</code>): </p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>api("org.gradle.experimental.kmp-ecosystem:org.gradle.experimental.kmp-ecosystem.gradle.plugin:0.1.40")
-</span></code></pre></div>
-<p>Then you can reuse these types in the extensions you write for your own custom Project Types:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>import org.gradle.api.experimental.common.BasicDependencies;
-</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>// ... more imports
-</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
-</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>
-</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>public interface MyUniqueApplication {
-</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>    @Nested
-</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>    BasicDependencies getDependencies();
-</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>
-</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    @Configuring
-</span><span id="__span-24-10"><a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a>    default void dependencies(Action&lt;? super BasicDependencies&gt; action) {
-</span><span id="__span-24-11"><a id="__codelineno-24-11" name="__codelineno-24-11" href="#__codelineno-24-11"></a>        action.execute(getDependencies());
-</span><span id="__span-24-12"><a id="__codelineno-24-12" name="__codelineno-24-12" href="#__codelineno-24-12"></a>    }
-</span><span id="__span-24-13"><a id="__codelineno-24-13" name="__codelineno-24-13" href="#__codelineno-24-13"></a>}
-</span></code></pre></div>
-<p>With this approach, wiring the <code>DependencyCollectors</code> to the corresponding configurations works exactly the same as described in Option 1. </p>
-<h4 id="option-3-reuse-an-existing-project-type">Option 3: Reuse an existing Project Type<a class="headerlink" href="#option-3-reuse-an-existing-project-type" title="Permanent link">#</a></h4>
-<p>Ultimately, we chose not to go with either of the previous options.
-Instead, we opted to reuse the complete pre-existing <code>kotlinApplication</code> Project Type we had already built as part of the prototype plugin.</p>
-<p>This approach allowed us to take advantage of more than just the <code>dependencies</code> block, we could also leverage the broader project configuration logic already implemented in the prototype.</p>
-<h3 id="reusing-an-existing-project-type">Reusing an Existing Project Type<a class="headerlink" href="#reusing-an-existing-project-type" title="Permanent link">#</a></h3>
-<p>To demonstrate our goal, we can undo the changes to the <code>gradle-client/build.gradle.kts</code> that introduced our custom Project Type, and instead explore how the existing prototype would work in its place.</p>
 <p>By adding the following to the <code>/gradle-client/build.gradle.kts</code> file:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>kotlinApplication {
-</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    targets {
-</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>        jvm {
-</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>            jdkVersion = 17
-</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>
-</span><span id="__span-25-6"><a id="__codelineno-25-6" name="__codelineno-25-6" href="#__codelineno-25-6"></a>            dependencies {
-</span><span id="__span-25-7"><a id="__codelineno-25-7" name="__codelineno-25-7" href="#__codelineno-25-7"></a>                implementation(project(":build-action"))
-</span><span id="__span-25-8"><a id="__codelineno-25-8" name="__codelineno-25-8" href="#__codelineno-25-8"></a>                implementation(project(":mutations-demo"))
-</span><span id="__span-25-9"><a id="__codelineno-25-9" name="__codelineno-25-9" href="#__codelineno-25-9"></a>
-</span><span id="__span-25-10"><a id="__codelineno-25-10" name="__codelineno-25-10" href="#__codelineno-25-10"></a>                implementation(project.dependencies.platform(libs.kotlin.bom))
-</span><span id="__span-25-11"><a id="__codelineno-25-11" name="__codelineno-25-11" href="#__codelineno-25-11"></a>                implementation(project.dependencies.platform(libs.kotlinx.coroutines.bom))
-</span><span id="__span-25-12"><a id="__codelineno-25-12" name="__codelineno-25-12" href="#__codelineno-25-12"></a>                implementation(project.dependencies.platform(libs.kotlinx.serialization.bom))
-</span><span id="__span-25-13"><a id="__codelineno-25-13" name="__codelineno-25-13" href="#__codelineno-25-13"></a>                implementation(project.dependencies.platform(libs.ktor.bom))
-</span><span id="__span-25-14"><a id="__codelineno-25-14" name="__codelineno-25-14" href="#__codelineno-25-14"></a>
-</span><span id="__span-25-15"><a id="__codelineno-25-15" name="__codelineno-25-15" href="#__codelineno-25-15"></a>                implementation(libs.gradle.tooling.api)
-</span><span id="__span-25-16"><a id="__codelineno-25-16" name="__codelineno-25-16" href="#__codelineno-25-16"></a>
-</span><span id="__span-25-17"><a id="__codelineno-25-17" name="__codelineno-25-17" href="#__codelineno-25-17"></a>                implementation(libs.sqldelight.extensions.coroutines)
-</span><span id="__span-25-18"><a id="__codelineno-25-18" name="__codelineno-25-18" href="#__codelineno-25-18"></a>                implementation(libs.sqldelight.runtime)
-</span><span id="__span-25-19"><a id="__codelineno-25-19" name="__codelineno-25-19" href="#__codelineno-25-19"></a>
-</span><span id="__span-25-20"><a id="__codelineno-25-20" name="__codelineno-25-20" href="#__codelineno-25-20"></a>                // ...other dependency declarations
-</span><span id="__span-25-21"><a id="__codelineno-25-21" name="__codelineno-25-21" href="#__codelineno-25-21"></a>            }
-</span><span id="__span-25-22"><a id="__codelineno-25-22" name="__codelineno-25-22" href="#__codelineno-25-22"></a>        }
-</span><span id="__span-25-23"><a id="__codelineno-25-23" name="__codelineno-25-23" href="#__codelineno-25-23"></a>    }
-</span><span id="__span-25-24"><a id="__codelineno-25-24" name="__codelineno-25-24" href="#__codelineno-25-24"></a>}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>kotlinApplication {
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>    targets {
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>        jvm {
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>            jdkVersion = 17
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>            dependencies {
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a>                implementation(project(":build-action"))
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a>                implementation(project(":mutations-demo"))
+</span><span id="__span-19-9"><a id="__codelineno-19-9" name="__codelineno-19-9" href="#__codelineno-19-9"></a>
+</span><span id="__span-19-10"><a id="__codelineno-19-10" name="__codelineno-19-10" href="#__codelineno-19-10"></a>                implementation(project.dependencies.platform(libs.kotlin.bom))
+</span><span id="__span-19-11"><a id="__codelineno-19-11" name="__codelineno-19-11" href="#__codelineno-19-11"></a>                implementation(project.dependencies.platform(libs.kotlinx.coroutines.bom))
+</span><span id="__span-19-12"><a id="__codelineno-19-12" name="__codelineno-19-12" href="#__codelineno-19-12"></a>                implementation(project.dependencies.platform(libs.kotlinx.serialization.bom))
+</span><span id="__span-19-13"><a id="__codelineno-19-13" name="__codelineno-19-13" href="#__codelineno-19-13"></a>                implementation(project.dependencies.platform(libs.ktor.bom))
+</span><span id="__span-19-14"><a id="__codelineno-19-14" name="__codelineno-19-14" href="#__codelineno-19-14"></a>
+</span><span id="__span-19-15"><a id="__codelineno-19-15" name="__codelineno-19-15" href="#__codelineno-19-15"></a>                implementation(libs.gradle.tooling.api)
+</span><span id="__span-19-16"><a id="__codelineno-19-16" name="__codelineno-19-16" href="#__codelineno-19-16"></a>
+</span><span id="__span-19-17"><a id="__codelineno-19-17" name="__codelineno-19-17" href="#__codelineno-19-17"></a>                implementation(libs.sqldelight.extensions.coroutines)
+</span><span id="__span-19-18"><a id="__codelineno-19-18" name="__codelineno-19-18" href="#__codelineno-19-18"></a>                implementation(libs.sqldelight.runtime)
+</span><span id="__span-19-19"><a id="__codelineno-19-19" name="__codelineno-19-19" href="#__codelineno-19-19"></a>
+</span><span id="__span-19-20"><a id="__codelineno-19-20" name="__codelineno-19-20" href="#__codelineno-19-20"></a>                // ...other dependency declarations
+</span><span id="__span-19-21"><a id="__codelineno-19-21" name="__codelineno-19-21" href="#__codelineno-19-21"></a>            }
+</span><span id="__span-19-22"><a id="__codelineno-19-22" name="__codelineno-19-22" href="#__codelineno-19-22"></a>        }
+</span><span id="__span-19-23"><a id="__codelineno-19-23" name="__codelineno-19-23" href="#__codelineno-19-23"></a>    }
+</span><span id="__span-19-24"><a id="__codelineno-19-24" name="__codelineno-19-24" href="#__codelineno-19-24"></a>}
 </span></code></pre></div>
 <p>and <em>removing</em> those same dependencies from the old <code>jvmMain.dependencies</code> block we should end up with a fully working build.</p>
 <p>This makes sense, as the <code>:gradle-client</code> project was a KMP project that only targets the JVM platform. 
@@ -1576,153 +1505,185 @@ Swapping out the declarations in <code>jvmMain.dependencies</code> for the <code
 Setting it to 17 here removes the need for the imperative version check that previously livesd in the settings file. </p>
 <p>With this minimal setup, the prototype plugin now takes care of wiring these dependencies into the appropriate configurations, and the project continues to build and run as before.</p>
 <p>This is exactly the kind of reuse we’re aiming for—not just dependency declarations, but for other logic already built into the prototype plugin, like the JDK version declaration. </p>
-<p>Now the question becomes: How can we reuse all of this logic in our custom <code>desktopComposeApp</code> type without duplicating the implementation?</p>
-<h4 id="attempt-1-inheritance">Attempt 1: Inheritance<a class="headerlink" href="#attempt-1-inheritance" title="Permanent link">#</a></h4>
-<p>At first glance, this seems like an ideal use case for inheritance.
-We already have a working  <code>kotlinApplication</code> and just want to extend it with custom functionality (like SQL Delight and Detekt).
-The <code>StandaloneKmpApplicationPlugin</code> plugin class is even marked <code>abstract</code>, perhaps suggesting it is designed for inheritance.
-So we’ll try the natural thing: subclass this plugin, override <code>apply(Project)</code> to add new logic, and call <code>super.apply(project)</code> to retain everything from the original.</p>
-<p>Unfortunately, this approach fails from the start.</p>
-<p>Each Project Type plugin can only expose a single Project Type.
-The <code>StandaloneKmpApplicationPlugin</code> already exposes the <code>kotlinApplication</code> type via a getter annotated with <code>@SoftwareType</code>. 
-If we try to add another getter annotated with <code>@SoftwareType</code> to this plugin or a subtype of it, Gradle throws an error like:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>  &gt; A problem was found with the DesktopComposeApplicationPlugin plugin.
-</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>      &gt; Type 'org.gradle.client.softwaretype.DesktopComposeApplicationPlugin' is registered as a project type plugin, but it exposes multiple project types.
-</span></code></pre></div>
-<p>As of now, Declarative Gradle enforces a one-software-type-per-plugin rule. 
-That may change in a future release, but for now, inheritance won’t work if your goal is to define a new Project Type based on an existing one.
-We’ll need to find another way.</p>
-<h4 id="attempt-2-brute-force-composition">Attempt 2: Brute-Force Composition<a class="headerlink" href="#attempt-2-brute-force-composition" title="Permanent link">#</a></h4>
-<p>Since we can’t use inheritance, we turned to composition instead.</p>
-<p>The idea is simple, have our <code>desktopComposeApp</code> contain a nested <code>kotlinApplication</code> block.
-This gives us access to all the existing functionality already defined in that Project Type like dependencies, target configurations, nested blocks, and more.
-Once that’s working, we can incrementally add new nested blocks for the specific features (SQL Delight, Detekt) used by the <code>:gradle-client</code> project. </p>
-<p>To start, we added the nested extension to <code>CustomDesktopComposeApplication</code>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>public interface CustomDesktopComposeApplication {
-</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    @Nested
-</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    KmpApplication getKotlinApplication();
-</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>
-</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>    @Configuring
-</span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>    default void kotlinApplication(Action&lt;? super KmpApplication&gt; action) {
-</span><span id="__span-27-7"><a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>        action.execute(getKotlinApplication());
-</span><span id="__span-27-8"><a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>    }
-</span><span id="__span-27-9"><a id="__codelineno-27-9" name="__codelineno-27-9" href="#__codelineno-27-9"></a>}
-</span></code></pre></div>
-<p>This will result in new usable blocks (<code>kotlinApplication {}</code> inside <code>desktopComposeApp {}</code>) in our DCL file that do...absolutely nothing.</p>
-<p>We needed to wire the nested block up so that it behaved like the original <code>kotlinApplication</code> Sotfware Type. 
-That logic for that wiring lived inside the <code>StandaloneKmpApplicationPlugin</code>’s apply method. 
-To reuse it, we first had to refactor that logic into a separate utility method that we could access.</p>
-<p>We created a <code>PluginWiring</code> class with a public static <code>wirePlugin</code> method (later renamed to <code>wireKMPApplication</code>). 
-This method accepted 2 arguments: the current <code>Project</code> and the nested extension interface we would configure in the DCL file. </p>
-<p>This allowed us to isolate the wiring of the nested type from applying its plugin and resue that logic.
-<a href="https://github.com/gradle/declarative-gradle/commit/1e9e66ffb59048b977de21b55f099f288f4cedd3">This commit</a> shows the change.</p>
-<p>With that refactoring in place, our plugin became:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>import static org.gradle.api.experimental.kmp.StandaloneKmpApplicationPlugin.PluginWiring.wireKMPApplication;
-</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
-</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>@SuppressWarnings("UnstableApiUsage")
-</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>public abstract class CustomDesktopComposeApplicationPlugin implements Plugin&lt;Project&gt; {
-</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>    public static final String DESKTOP_COMPOSE_APP = "desktopComposeApp";
-</span><span id="__span-28-6"><a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>
-</span><span id="__span-28-7"><a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>    @SoftwareType(name = DESKTOP_COMPOSE_APP, modelPublicType = CustomDesktopComposeApplication.class)
-</span><span id="__span-28-8"><a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>    public abstract CustomDesktopComposeApplication getDesktopComposeApp();
-</span><span id="__span-28-9"><a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>
-</span><span id="__span-28-10"><a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>    @Override
-</span><span id="__span-28-11"><a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>    public void apply(Project project) {
-</span><span id="__span-28-12"><a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>        CustomDesktopComposeApplication dslModel = getDesktopComposeApp();
-</span><span id="__span-28-13"><a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>        wireKMPApplication(project, dslModel.getKotlinApplication());
-</span><span id="__span-28-14"><a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a>    }
-</span><span id="__span-28-15"><a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>}
-</span></code></pre></div>
-<p>After making these changes, we were able to move most of the “basic” logic of our KMP application to our new plugin using the nested <code>kotlinApplication</code> block.
-<a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/gradle-client/build.gradle.dcl">This commit</a> reflects those changes.
-If you’ve been following our earlier EAPs, much of this configuration should look familiar — it’s exactly what the prototype plugins supported before.
-Once these declarations are moved into our new nested block, we can remove them from the imperative part of this file (everything that remains outside the <code>desktopComposeApp</code> block), and still have a buildable project.</p>
-<p>It’s important to note that that is almost certainly <em>not</em> how composition will ultimately work in Declarative Gradle.
-Our long-term goal is to make plugin composition first-class, flexible, and far less manual.
-But for now, with EAP, this brute-force composition approach gets us the reuse we need without duplicating the logic we’ve already built.</p>
 <h3 id="wiring-additional-functionality-from-plugins">Wiring Additional Functionality from Plugins<a class="headerlink" href="#wiring-additional-functionality-from-plugins" title="Permanent link">#</a></h3>
 <p>This still leaves a significant portion of our application’s functionality unaccounted for — specifically, the “custom” parts: Compose, SQLDelight, and Detekt.</p>
-<p>To address this, we gradually built support for each feature within our declarative desktopComposeApp Project Type. 
+<p>To address this, we gradually built support for each with a Project Feature. 
 The goal is to migrate all functionality from the imperative parts of the build script into this unified declarative model until nothing imperative remains.
 At this stage, there are multiple ways to approach the problem, and which one works best will depend on your specific needs and constraints.</p>
-<p>Let’s start with something relatively simple: Detekt.</p>
+<p>Let’s continue our implementation of the Compose feature.</p>
+<h4 id="supporting-compose">Supporting Compose<a class="headerlink" href="#supporting-compose" title="Permanent link">#</a></h4>
+<p>To support Compose, we used multiple levels of nesting to build a DSL that simplifies some of the Compose plugin’s extensions but is, in some ways, limited by our DCL's current feature set.</p>
+<p>Designing Compose support involves the following:
+1. Build new DSL definition objects to hold the configuration data needed by the plugin
+2. Move the configuration from the imperative part of our buildscript into the new blocks using the definition types
+3. Write code to be called by our plugin during application to wire values from our definition into the (Compose) plugin’s extension in an <code>afterEvaluate</code> closure</p>
+<p>You can see the original Compose DSL configuration in the imperative buildscript <a href="https://github.com/gradle/gradle-client/blob/b498fd896d858aecf4403ab077a4ea14bcd484d0/gradle-client/build.gradle.kts#L97-L147">before migration</a> and the resulting DCL <a href="https://github.com/gradle/gradle-client/blob/2b52c756913e201e283eed9ccbed9ce95e53004e/gradle-client/build.gradle.dcl#L87-L155">after migration</a>.
+Rather than walk through the full implementation line-by-line (which closely mirrors the structure of the Detekt and SQLDelight support), we’ll highlight a few notable aspects of our Compose support.</p>
+<h5 id="representing-jvm-arguments-with-ndocs">Representing JVM arguments with <code>NDOC</code>s<a class="headerlink" href="#representing-jvm-arguments-with-ndocs" title="Permanent link">#</a></h5>
+<p>One element in the Compose DCL block that might catch your eye is the <code>jvmArgs</code> section:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>jvmArgs {
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    jvmArg("-Xms") {
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>        value = "35m"
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>    }
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    jvmArg("-Xmx") {
+</span><span id="__span-20-6"><a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>        value = "128m"
+</span><span id="__span-20-7"><a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a>    }
+</span><span id="__span-20-8"><a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>
+</span><span id="__span-20-9"><a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a>    // This was originally added at an inner nesting level, but it's not clear why
+</span><span id="__span-20-10"><a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>    jvmArg("-splash") {
+</span><span id="__span-20-11"><a id="__codelineno-20-11" name="__codelineno-20-11" href="#__codelineno-20-11"></a>        value = ":\"\$APPDIR/resources/splash.png\""
+</span><span id="__span-20-12"><a id="__codelineno-20-12" name="__codelineno-20-12" href="#__codelineno-20-12"></a>    }
+</span><span id="__span-20-13"><a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>}
+</span></code></pre></div>
+<p>When you look at the <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/Compose.java">Compose definition</a>, you’ll see that this block is modeled using an <code>NDOC</code>.
+That might seem like a strange choice, given that not all JVM arguments manifest in a similar manner.<br>
+For instance, some JVM arguments are flags that don’t take a value, while others are a name-value pair that are concatenated into a single argument on the command line, and yet other arguments are name-value pairs that are passed as two separate command line arguments.<br>
+In other words, a collection of JVM arguments would be better represented as a more nuanced data structure.<br>
+In fact, arguments for a JVM are a cross-cutting concern that could be expressed by a common building-block type and reused in many different places in the DSL.</p>
+<p>So if you’re looking at this bit of code and thinking it’s both more complex and more limited than it should be — don’t worry, we feel the same.
+In future versions of Gradle, we expect to provide better support for concepts like polymorphic domain object containers and common building blocks that can be reused across different Project Types and/or Features.</p>
+<h5 id="buildtypes-simplified">BuildTypes Simplified<a class="headerlink" href="#buildtypes-simplified" title="Permanent link">#</a></h5>
+<p>An area that might give the opposite impression is the support for configuring the <code>release</code> build type:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>buildTypes {
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>    release {
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>        proguard {
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>            optimize = false
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a>            obfuscate = false
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a>            configurationFiles = listOf(layout.projectDirectory.file("proguard-desktop.pro"))
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a>        }
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a>    }
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>}
+</span></code></pre></div>
+<p>Behind the scenes, this isn’t modeled as a container of user-defined build types (like you might see with NDOCs elsewhere) by the 3rd party Compose plugin.
+Instead, it's implemented using several static nested extensions.
+That’s because the <code>org.jetbrains.compose.desktop.application.dsl.JvmApplicationBuildTypes</code> extension provides a static list of methods that expose predefined build types such as release.
+You can see this in our feature's <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java#L68">on this line</a> where we call the parameterless <code>buildTypes.getRelease()</code> method directly.</p>
+<h5 id="defining-a-build-model">Defining a Build Model<a class="headerlink" href="#defining-a-build-model" title="Permanent link">#</a></h5>
+<p>In order to implement our compose feature, we need to define a build model for it.<br>
+The build model represents how we want to deal with the low-level details of the compose plugin internally, and how we want other build logic to potentially interact with our feature.<br>
+In many ways, it represents the "API" of our feature.</p>
+<p>However, unlike a completely new feature, we’re building a feature on top of an existing 3rd party plugin.
+This means our feature mostly exists to configure the existing plugin, and implements little to no build logic itself.<br>
+Our interface to the legacy plugin is the extension it provides, so the <code>ComposeExtension</code> object is essentially our build model.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>package org.gradle.client.projectfeatures.compose;
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a>import org.gradle.api.internal.plugins.BuildModel;
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a>import org.jetbrains.compose.ComposeExtension;
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a>public interface ComposeBuildModel extends BuildModel {
+</span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    ComposeExtension getComposeExtension();
+</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>}
+</span></code></pre></div>
+<p>We need to be able to set the extension in our build model, but we don't want to expose the ability to set the extension to other build logic.
+To achieve this, we provide an implementation type for our build model that exposes a setter for the extension, but we keep the interface clean by only exposing the getter to other build logic.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>package org.gradle.client.projectfeatures.compose;
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>import org.jetbrains.compose.ComposeExtension;
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>public class DefaultComposeBuildModel implements ComposeBuildModel {
+</span><span id="__span-23-6"><a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>    private ComposeExtension composeExtension;
+</span><span id="__span-23-7"><a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a>
+</span><span id="__span-23-8"><a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a>    @Override
+</span><span id="__span-23-9"><a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>    public ComposeExtension getComposeExtension() {
+</span><span id="__span-23-10"><a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a>        return composeExtension;
+</span><span id="__span-23-11"><a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a>    }
+</span><span id="__span-23-12"><a id="__codelineno-23-12" name="__codelineno-23-12" href="#__codelineno-23-12"></a>
+</span><span id="__span-23-13"><a id="__codelineno-23-13" name="__codelineno-23-13" href="#__codelineno-23-13"></a>    public void setComposeExtension(ComposeExtension composeExtension) {
+</span><span id="__span-23-14"><a id="__codelineno-23-14" name="__codelineno-23-14" href="#__codelineno-23-14"></a>        this.composeExtension = composeExtension;
+</span><span id="__span-23-15"><a id="__codelineno-23-15" name="__codelineno-23-15" href="#__codelineno-23-15"></a>    }
+</span><span id="__span-23-16"><a id="__codelineno-23-16" name="__codelineno-23-16" href="#__codelineno-23-16"></a>}
+</span></code></pre></div>
+<p>Finally, we need to tell Gradle to use our implementation type when instantiating the build model.
+We do this by setting the implementation class in the binding:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a>static class Binding implements ProjectFeatureBinding {
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>    @Override
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>    public void bind(ProjectFeatureBindingBuilder builder) {
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>        builder.bindProjectFeatureToBuildModel("compose", Compose.class, KotlinMultiplatformBuildModel.class,
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a>                (context, definition, buildModel, parent) -&gt; {
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a>                    ...
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a>                }
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a>        ).withBuildModelImplementationType(DefaultComposeBuildModel.class);
+</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    }
+</span></code></pre></div>
+<p>We can now query and set the <code>ComposeExtension</code> instance from the third party plugin when applying the feature.<br>
+However, this seems like a lot of ceremony in order to wire an existing extension into our build model.
+In future versions of Gradle, we expect to provide simpler ways to wrap existing plugin extensions into build models.
+Ideally, this would be as simple as declaring that a specific property in the build model represents a project extension and then there would be no need for a separate implementation type - Gradle would simply handle the wiring automatically when instantiating the build model.</p>
 <h4 id="supporting-detekt">Supporting Detekt<a class="headerlink" href="#supporting-detekt" title="Permanent link">#</a></h4>
 <p>When supporting a third-party plugin like Detekt, there are typically two steps involved:
 1. We need to create a new nested block in our Project Type to hold configuration data for that plugin
 2. We need to apply the plugin wiring that configuration data as needed</p>
 <p>The existing block used to configure Detekt in the imperative buildscript is quite simple:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>detekt {
-</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>    source.setFrom("src/jvmMain/kotlin", "src/jvmTest/kotlin")
-</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>    config.setFrom(rootDir.resolve("gradle/detekt/detekt.conf"))
-</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>    parallel = true
-</span><span id="__span-29-5"><a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>detekt {
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    source.setFrom("src/jvmMain/kotlin", "src/jvmTest/kotlin")
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a>    config.setFrom(rootDir.resolve("gradle/detekt/detekt.conf"))
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a>    parallel = true
+</span><span id="__span-25-5"><a id="__codelineno-25-5" name="__codelineno-25-5" href="#__codelineno-25-5"></a>}
 </span></code></pre></div>
-<p>We <a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/detekt/Detekt.java">translated</a> this into a simple extension type that uses <code>Property</code> types compatible with DCL:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>public interface Detekt {
-</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    @Restricted
-</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>    ListProperty&lt;Directory&gt; getSource();
-</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>
-</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>    @Restricted
-</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>    ListProperty&lt;RegularFile&gt; getConfig();
-</span><span id="__span-30-7"><a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>
-</span><span id="__span-30-8"><a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>    @Restricted
-</span><span id="__span-30-9"><a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>    Property&lt;Boolean&gt; getParallel();
-</span><span id="__span-30-10"><a id="__codelineno-30-10" name="__codelineno-30-10" href="#__codelineno-30-10"></a>}
-</span></code></pre></div>
-<p>This new Detekt block was added as a <code>@Nested</code> block inside our <code>CustomDesktopComposeApplication</code> Project Type:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>@Nested
-</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    Detekt getDetekt();
-</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>
-</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>    @Configuring
-</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>    default void detekt(Action&lt;? super Detekt&gt; action) {
-</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>        action.execute(getDetekt());
-</span><span id="__span-31-7"><a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>    }
+<p>We <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/detekt/Detekt.java">translated</a> this into a simple definition type that uses <code>Property</code> types compatible with DCL:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a>public interface Detekt {
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>    @Restricted
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a>    ListProperty&lt;Directory&gt; getSource();
+</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a>
+</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a>    @Restricted
+</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a>    ListProperty&lt;RegularFile&gt; getConfig();
+</span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a>
+</span><span id="__span-26-8"><a id="__codelineno-26-8" name="__codelineno-26-8" href="#__codelineno-26-8"></a>    @Restricted
+</span><span id="__span-26-9"><a id="__codelineno-26-9" name="__codelineno-26-9" href="#__codelineno-26-9"></a>    Property&lt;Boolean&gt; getParallel();
+</span><span id="__span-26-10"><a id="__codelineno-26-10" name="__codelineno-26-10" href="#__codelineno-26-10"></a>}
 </span></code></pre></div>
 <p>We’re not <em>recreating</em> the exact types from the Detekt Gradle plugin, but modeling the inputs we need in a way that makes sense for our project and is compatible with the DCL.
 That’s why we use lists of files and directories rather than <code>ConfigurableFileCollection</code> for the source and configuration files.
 We fully utlize Gradle’s Lazy Provider APIs and wrap each data type in the appropriate type of <code>Property</code>.</p>
-<p>If you compare the before and after commits for the <code>:gradle-client</code> project’s build script, you can see how the Detekt configuration was migrated from the original imperative style to the new declarative form nested under the <code>desktopComposeApp</code> block.</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>detekt {
-</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    source = listOf(layout.projectDirectory.dir("src/jvmMain/kotlin"), layout.projectDirectory.dir("src/jvmTest/kotlin"))
-</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>    config = listOf(layout.settingsDirectory.file("gradle/detekt/detekt.conf"))
-</span><span id="__span-32-4"><a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>    parallel = true
-</span><span id="__span-32-5"><a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>}
+<p>If you compare the before and after commits for the <code>:gradle-client</code> project’s build script, you can see how the Detekt configuration was migrated from the original imperative style to the new declarative form nested under the <code>detekt</code> feature definition.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>detekt {
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>    source = listOf(layout.projectDirectory.dir("src/jvmMain/kotlin"), layout.projectDirectory.dir("src/jvmTest/kotlin"))
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>    config = listOf(layout.settingsDirectory.file("gradle/detekt/detekt.conf"))
+</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    parallel = true
+</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>}
 </span></code></pre></div>
-<p>In general, creating new extensions like this is straightforward. 
+<p>In general, creating new definitions like this is straightforward. 
 You can reference the existing DSL to see which values are being set, then define matching <code>Property</code> getters and configure methods with the appropriate DCL annotations.</p>
-<p>At this point, though, builds don’t actually run Detekt yet. We’ve only modeled the configuration — we still need to wire this extension to the plugin.</p>
-<p>To keep our code organized, we followed the pattern used for wiring the KMP Application support and created a new dedicated support class <code>DetektSupport</code>. 
-<a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/detekt/DetektSupport.java">Here’s the <code>wireDetekt</code> method</a>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>public static void wireDetekt(Project project, CustomDesktopComposeApplication projectDefinition) {
-</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>        project.getPluginManager().apply("io.gitlab.arturbosch.detekt");
-</span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>
-</span><span id="__span-33-4"><a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a>        project.afterEvaluate(p -&gt; {
-</span><span id="__span-33-5"><a id="__codelineno-33-5" name="__codelineno-33-5" href="#__codelineno-33-5"></a>            Detekt detektDefinition = projectDefinition.getDetekt();
-</span><span id="__span-33-6"><a id="__codelineno-33-6" name="__codelineno-33-6" href="#__codelineno-33-6"></a>            DetektExtension detekt = project.getExtensions().findByType(DetektExtension.class);
-</span><span id="__span-33-7"><a id="__codelineno-33-7" name="__codelineno-33-7" href="#__codelineno-33-7"></a>            assert detekt != null;
-</span><span id="__span-33-8"><a id="__codelineno-33-8" name="__codelineno-33-8" href="#__codelineno-33-8"></a>            detekt.getSource().from(detektDefinition.getSource());
-</span><span id="__span-33-9"><a id="__codelineno-33-9" name="__codelineno-33-9" href="#__codelineno-33-9"></a>            detekt.getConfig().from(detektDefinition.getConfig());
-</span><span id="__span-33-10"><a id="__codelineno-33-10" name="__codelineno-33-10" href="#__codelineno-33-10"></a>
-</span><span id="__span-33-11"><a id="__codelineno-33-11" name="__codelineno-33-11" href="#__codelineno-33-11"></a>            // This is not a property, need to wire this in afterEvaluate, so might as well wait to wire the rest of detekt with it
-</span><span id="__span-33-12"><a id="__codelineno-33-12" name="__codelineno-33-12" href="#__codelineno-33-12"></a>            detekt.setParallel(detektDefinition.getParallel().get());
-</span><span id="__span-33-13"><a id="__codelineno-33-13" name="__codelineno-33-13" href="#__codelineno-33-13"></a>        });
-</span><span id="__span-33-14"><a id="__codelineno-33-14" name="__codelineno-33-14" href="#__codelineno-33-14"></a>    }
+<p>At this point, though, builds don’t actually run Detekt yet. We’ve only modeled the configuration — we still need to wire the configured definition to the existing plugin extension.
+We do this in the apply action we provide when binding the Detekt feature.</p>
+<p>Here is our feature binding for Detekt, implemented in <code>DetektProjectFeaturePlugin.java</code>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>static class Binding implements ProjectFeatureBinding {
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>    @Override
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>    public void bind(ProjectFeatureBindingBuilder builder) {
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>        builder.bindProjectFeatureToBuildModel("detekt", Detekt.class, KotlinMultiplatformBuildModel.class,
+</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>                (context, definition, buildModel, parent) -&gt; {
+</span><span id="__span-28-6"><a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>
+</span><span id="__span-28-7"><a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a>                    Project project = context.getProject();
+</span><span id="__span-28-8"><a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>                    project.getPluginManager().apply("io.gitlab.arturbosch.detekt");
+</span><span id="__span-28-9"><a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>                    ((DefaultDetektBuildModel)buildModel).setDetektExtension(project.getExtensions().findByType(DetektExtension.class));
+</span><span id="__span-28-10"><a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>
+</span><span id="__span-28-11"><a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>                    buildModel.getDetektExtension().getSource().from(definition.getSource());
+</span><span id="__span-28-12"><a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>                    buildModel.getDetektExtension().getConfig().from(definition.getConfig());
+</span><span id="__span-28-13"><a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>
+</span><span id="__span-28-14"><a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a>                    project.afterEvaluate(p -&gt; {
+</span><span id="__span-28-15"><a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>                        // This is not a property, need to wire this in afterEvaluate
+</span><span id="__span-28-16"><a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a>                        buildModel.getDetektExtension().setParallel(definition.getParallel().get());
+</span><span id="__span-28-17"><a id="__codelineno-28-17" name="__codelineno-28-17" href="#__codelineno-28-17"></a>                    });
+</span><span id="__span-28-18"><a id="__codelineno-28-18" name="__codelineno-28-18" href="#__codelineno-28-18"></a>                }
+</span><span id="__span-28-19"><a id="__codelineno-28-19" name="__codelineno-28-19" href="#__codelineno-28-19"></a>        ).withBuildModelImplementationType(DefaultDetektBuildModel.class);
+</span><span id="__span-28-20"><a id="__codelineno-28-20" name="__codelineno-28-20" href="#__codelineno-28-20"></a>    }
+</span><span id="__span-28-21"><a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a>}
 </span></code></pre></div>
 <p>We apply the Detekt plugin programmatically, which means it must be available on the classpath when our Project Type is applied.
-To make that possible,, we add it as an <code>api</code> dependency in our plugin’s <a href="https://github.com/gradle/gradle-client/blob/96d2b0adecfc9d622b77f1d67bbad33e8d752da3/build-logic/plugins/build.gradle.dcl">buildscript</a>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>javaGradlePlugin {
-</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    dependencies {
-</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>        // ... other deps
-</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>        api("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.6")
-</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    }
-</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>    // ... other configuration
-</span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>}
+To make that possible, we add it as an <code>api</code> dependency in our plugin’s <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/build.gradle.dcl">buildscript</a>:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-29-1"><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>javaGradlePlugin {
+</span><span id="__span-29-2"><a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>    dependencies {
+</span><span id="__span-29-3"><a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a>        // ... other deps
+</span><span id="__span-29-4"><a id="__codelineno-29-4" name="__codelineno-29-4" href="#__codelineno-29-4"></a>        api("io.gitlab.arturbosch.detekt:detekt-gradle-plugin:1.23.6")
+</span><span id="__span-29-5"><a id="__codelineno-29-5" name="__codelineno-29-5" href="#__codelineno-29-5"></a>    }
+</span><span id="__span-29-6"><a id="__codelineno-29-6" name="__codelineno-29-6" href="#__codelineno-29-6"></a>    // ... other configuration
+</span><span id="__span-29-7"><a id="__codelineno-29-7" name="__codelineno-29-7" href="#__codelineno-29-7"></a>}
 </span></code></pre></div>
-<p>With this in place, applying our custom <code>desktopComposeApp</code> Project Type gives the project full Detekt support—with the configuration fully migrated to the declarative model.</p>
+<p>With this in place, applying our custom <code>detekt</code> Project Feature gives the project full Detekt support, with the configuration fully migrated to the declarative model.</p>
 <h5 id="the-need-for-afterevaluate">The Need for <code>afterEvaluate</code><a class="headerlink" href="#the-need-for-afterevaluate" title="Permanent link">#</a></h5>
-<p>One key detail in our wiring method is the use of <code>Project.afterEvaluate</code> to wrap the wiring of the data in our new extension (<code>Detekt detektDefinition</code>) to the Detekt plugin’s extension (<code>DetektExtenstion detekt</code>).</p>
+<p>One key detail in our wiring method is the use of <code>Project.afterEvaluate</code> to wrap the wiring of the data in our new extension (<code>Detekt</code>) to the Detekt plugin’s extension (<code>DetektExtenstion</code>).</p>
 <p>If you look at the <code>setParallel</code> method on the <code>detekt</code> instance (the Detekt plugin’s extension) and you’ll notice it only accepts a boolean value.
-There is no overloaded that accepts a <code>Property&lt;Boolean&gt;</code>, which is what we’ve used to model this value in our DCL extension.
+There is no overload that accepts a <code>Property&lt;Boolean&gt;</code>, which is what we’ve used to model this value in our DCL extension.
 To work around this, we need to retrieve the value of our lazy <code>Property</code> via <code>get()</code> and call <code>setParallel()</code> using the result - but this can only be done once the model has been populated with data configured in the DCL.</p>
 <p>Since the DCL runtime applies the plugin that configures the Project Type first and only then fills the model with the data from the <code>build.gradle.dcl</code> file, the plugin application code (starting from the <code>apply</code> method) cannot rely on the full model content being present at that time. 
 The code configuring the plugin will not be able to eagerly access the final values in the model’s Java bean properties and plain collections at that point and will have to wait until later for them to be present.
@@ -1730,156 +1691,127 @@ Using <code>afterEvaluate</code> delays our access to this data until Gradle is 
 This is a necessary workaround at the moment and a common pattern when building Declarative Project Types that use 3rd party plugins.</p>
 <p>Because we need to delay setting the parallel value, we wrapped all of the Detekt configuration in <code>afterEvaluate</code> (even the source and config <code>FileCollection</code> properties, which are amenable to lazy wiring - note there is no call to <code>get()</code> involved in the DSL types here).
 When reading this code, keep in mind that as the comment explains, this is only <em>necessary</em> when a plugin does not make use of Gradle’s Lazy Provider API.</p>
-<p>With this logic in place, we can now simply call our <code>wireDetekt</code> method from our custom Project Type plugin’s <code>apply</code> method, just like we did for <code>wireKMPApplication</code> — creating a consistent and maintainable pattern across plugin integrations.</p>
+<p>With this logic in place, we can now simply reference the <code>detekt</code> block in our DCL file, and the Detekt plugin will be applied and configured.</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-30-1"><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>kotlinApplication {
+</span><span id="__span-30-2"><a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>    detekt {
+</span><span id="__span-30-3"><a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>        source = listOf(layout.projectDirectory.dir("src/jvmMain/kotlin"), layout.projectDirectory.dir("src/jvmTest/kotlin"))
+</span><span id="__span-30-4"><a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>        config = listOf(layout.settingsDirectory.file("gradle/detekt/detekt.conf"))
+</span><span id="__span-30-5"><a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>        parallel = true
+</span><span id="__span-30-6"><a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>    }
+</span><span id="__span-30-7"><a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>}
+</span></code></pre></div>
 <h4 id="supporting-sqldelight">Supporting SQLDelight<a class="headerlink" href="#supporting-sqldelight" title="Permanent link">#</a></h4>
-<p>Supporting SQLDelight follows the same process we used for Detek, with one key difference: the SQLDelight plugin models its configuration using a <code>NamedDomainObjectContainer</code> (NDOC).</p>
+<p>Supporting SQLDelight follows the same process we used for Detekt, with one key difference: the SQLDelight plugin models its configuration using a <code>NamedDomainObjectContainer</code> (NDOC).</p>
 <p>Let’s look at the original DSL used to configure SQLDelight:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>sqldelight {
-</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    databases {
-</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>        create("ApplicationDatabase") {
-</span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>            packageName = "org.gradle.client.core.database.sqldelight.generated"
-</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>            verifyDefinitions = true
-</span><span id="__span-35-6"><a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>            verifyMigrations = true
-</span><span id="__span-35-7"><a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>            deriveSchemaFromMigrations = true
-</span><span id="__span-35-8"><a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>            generateAsync = false
-</span><span id="__span-35-9"><a id="__codelineno-35-9" name="__codelineno-35-9" href="#__codelineno-35-9"></a>        }
-</span><span id="__span-35-10"><a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a>    }
-</span><span id="__span-35-11"><a id="__codelineno-35-11" name="__codelineno-35-11" href="#__codelineno-35-11"></a>}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-31-1"><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a>sqldelight {
+</span><span id="__span-31-2"><a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    databases {
+</span><span id="__span-31-3"><a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a>        create("ApplicationDatabase") {
+</span><span id="__span-31-4"><a id="__codelineno-31-4" name="__codelineno-31-4" href="#__codelineno-31-4"></a>            packageName = "org.gradle.client.core.database.sqldelight.generated"
+</span><span id="__span-31-5"><a id="__codelineno-31-5" name="__codelineno-31-5" href="#__codelineno-31-5"></a>            verifyDefinitions = true
+</span><span id="__span-31-6"><a id="__codelineno-31-6" name="__codelineno-31-6" href="#__codelineno-31-6"></a>            verifyMigrations = true
+</span><span id="__span-31-7"><a id="__codelineno-31-7" name="__codelineno-31-7" href="#__codelineno-31-7"></a>            deriveSchemaFromMigrations = true
+</span><span id="__span-31-8"><a id="__codelineno-31-8" name="__codelineno-31-8" href="#__codelineno-31-8"></a>            generateAsync = false
+</span><span id="__span-31-9"><a id="__codelineno-31-9" name="__codelineno-31-9" href="#__codelineno-31-9"></a>        }
+</span><span id="__span-31-10"><a id="__codelineno-31-10" name="__codelineno-31-10" href="#__codelineno-31-10"></a>    }
+</span><span id="__span-31-11"><a id="__codelineno-31-11" name="__codelineno-31-11" href="#__codelineno-31-11"></a>}
 </span></code></pre></div>
 <p>Even at a glance, it's clear that the <code>sqldelight</code> extension defines a container named <code>databases</code> which provides a <code>create</code> method to add and configure new elements.</p>
-<p>To replicate this structure in our DCL-based Project Type, we model the databases block using a <code>NDOC</code>.
-This allows us to preserve much of the original DSL structure, now nesting a <code>sqlDelight</code> block inside our <code>desktopComposeApp</code> top-level block:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>sqlDelight {
-</span><span id="__span-36-2"><a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a>    databases {
-</span><span id="__span-36-3"><a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a>        database("ApplicationDatabase") {
-</span><span id="__span-36-4"><a id="__codelineno-36-4" name="__codelineno-36-4" href="#__codelineno-36-4"></a>            packageName = "org.gradle.client.core.database.sqldelight.generated"
-</span><span id="__span-36-5"><a id="__codelineno-36-5" name="__codelineno-36-5" href="#__codelineno-36-5"></a>            verifyDefinitions = true
-</span><span id="__span-36-6"><a id="__codelineno-36-6" name="__codelineno-36-6" href="#__codelineno-36-6"></a>            verifyMigrations = true
-</span><span id="__span-36-7"><a id="__codelineno-36-7" name="__codelineno-36-7" href="#__codelineno-36-7"></a>            deriveSchemaFromMigrations = true
-</span><span id="__span-36-8"><a id="__codelineno-36-8" name="__codelineno-36-8" href="#__codelineno-36-8"></a>            generateAsync = false
-</span><span id="__span-36-9"><a id="__codelineno-36-9" name="__codelineno-36-9" href="#__codelineno-36-9"></a>        }
-</span><span id="__span-36-10"><a id="__codelineno-36-10" name="__codelineno-36-10" href="#__codelineno-36-10"></a>    }
-</span><span id="__span-36-11"><a id="__codelineno-36-11" name="__codelineno-36-11" href="#__codelineno-36-11"></a>}
+<p>To replicate this structure in our DCL-based feature definition, we model the databases block using a <code>NDOC</code>.
+This allows us to preserve much of the original DSL structure, now providing a <code>sqlDelight</code> block that can be added to a <code>kotlinApplication</code> definition:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-32-1"><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a>kotlinApplication {
+</span><span id="__span-32-2"><a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a>    sqlDelight {
+</span><span id="__span-32-3"><a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>        databases {
+</span><span id="__span-32-4"><a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a>            database("ApplicationDatabase") {
+</span><span id="__span-32-5"><a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a>                packageName = "org.gradle.client.core.database.sqldelight.generated"
+</span><span id="__span-32-6"><a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a>                verifyDefinitions = true
+</span><span id="__span-32-7"><a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>                verifyMigrations = true
+</span><span id="__span-32-8"><a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a>                deriveSchemaFromMigrations = true
+</span><span id="__span-32-9"><a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a>                generateAsync = false
+</span><span id="__span-32-10"><a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a>            }
+</span><span id="__span-32-11"><a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a>        }
+</span><span id="__span-32-12"><a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a>    }
+</span><span id="__span-32-13"><a id="__codelineno-32-13" name="__codelineno-32-13" href="#__codelineno-32-13"></a>}
 </span></code></pre></div>
 <p>Note that by default, an <code>NDOC</code> named <code>databases</code> will assume the method used to create a new element is called <code>database</code>. 
 This can be customized, but the default behavior is sufficient for our needs.
-We kept the name <code>database</code> instead of using <code>create</code>, because it sounds more declarative and aligns better with the style we’re aiming for than a method called <code>create</code>, which has imperative conotations.</p>
-<p>The DCL model for the sqlDelight block is simple:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-37-1"><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a>public interface SqlDelight {
-</span><span id="__span-37-2"><a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>    NamedDomainObjectContainer&lt;Database&gt; getDatabases();
-</span><span id="__span-37-3"><a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>}
+We kept the name <code>database</code> instead of using <code>create</code>, because it sounds more declarative and aligns better with the style we’re aiming for than a method called <code>create</code>, which has imperative connotations.</p>
+<p>The DCL definition for the sqlDelight block is simple:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-33-1"><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a>public interface SqlDelight {
+</span><span id="__span-33-2"><a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>    NamedDomainObjectContainer&lt;Database&gt; getDatabases();
+</span><span id="__span-33-3"><a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>}
 </span></code></pre></div>
-<p>Notice that the <code>NDOC</code> doesn’t require any special annotation - Declarative Gradle understands how <code>NDOC</code>s work and handles them automatically when parsing the model.</p>
+<p>Notice that the <code>NDOC</code> doesn’t require any special annotation - Declarative Gradle understands how <code>NDOC</code>s work and handles them automatically.</p>
 <p>A database is a simple container that holds the properties we use to configure our SQLDelight database.
 Though it is a fully abstract interface, it can be thought of as a simple value type - it exists to hold information about each database in our container:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-38-1"><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a>public interface Database extends Named {
-</span><span id="__span-38-2"><a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a>    @Restricted
-</span><span id="__span-38-3"><a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>    Property&lt;String&gt; getPackageName();
-</span><span id="__span-38-4"><a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a>
-</span><span id="__span-38-5"><a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a>    @Restricted
-</span><span id="__span-38-6"><a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>    Property&lt;Boolean&gt; getVerifyDefinitions();
-</span><span id="__span-38-7"><a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a>
-</span><span id="__span-38-8"><a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a>    @Restricted
-</span><span id="__span-38-9"><a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a>    Property&lt;Boolean&gt; getVerifyMigrations();
-</span><span id="__span-38-10"><a id="__codelineno-38-10" name="__codelineno-38-10" href="#__codelineno-38-10"></a>
-</span><span id="__span-38-11"><a id="__codelineno-38-11" name="__codelineno-38-11" href="#__codelineno-38-11"></a>    @Restricted
-</span><span id="__span-38-12"><a id="__codelineno-38-12" name="__codelineno-38-12" href="#__codelineno-38-12"></a>    Property&lt;Boolean&gt; getDeriveSchemaFromMigrations();
-</span><span id="__span-38-13"><a id="__codelineno-38-13" name="__codelineno-38-13" href="#__codelineno-38-13"></a>
-</span><span id="__span-38-14"><a id="__codelineno-38-14" name="__codelineno-38-14" href="#__codelineno-38-14"></a>    @Restricted
-</span><span id="__span-38-15"><a id="__codelineno-38-15" name="__codelineno-38-15" href="#__codelineno-38-15"></a>    Property&lt;Boolean&gt; getGenerateAsync();
-</span><span id="__span-38-16"><a id="__codelineno-38-16" name="__codelineno-38-16" href="#__codelineno-38-16"></a>}
+<div class="language-text highlight"><pre><span></span><code><span id="__span-34-1"><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a>public interface Database extends Named {
+</span><span id="__span-34-2"><a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a>    @Restricted
+</span><span id="__span-34-3"><a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>    Property&lt;String&gt; getPackageName();
+</span><span id="__span-34-4"><a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a>
+</span><span id="__span-34-5"><a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a>    @Restricted
+</span><span id="__span-34-6"><a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a>    Property&lt;Boolean&gt; getVerifyDefinitions();
+</span><span id="__span-34-7"><a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a>
+</span><span id="__span-34-8"><a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>    @Restricted
+</span><span id="__span-34-9"><a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a>    Property&lt;Boolean&gt; getVerifyMigrations();
+</span><span id="__span-34-10"><a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a>
+</span><span id="__span-34-11"><a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a>    @Restricted
+</span><span id="__span-34-12"><a id="__codelineno-34-12" name="__codelineno-34-12" href="#__codelineno-34-12"></a>    Property&lt;Boolean&gt; getDeriveSchemaFromMigrations();
+</span><span id="__span-34-13"><a id="__codelineno-34-13" name="__codelineno-34-13" href="#__codelineno-34-13"></a>
+</span><span id="__span-34-14"><a id="__codelineno-34-14" name="__codelineno-34-14" href="#__codelineno-34-14"></a>    @Restricted
+</span><span id="__span-34-15"><a id="__codelineno-34-15" name="__codelineno-34-15" href="#__codelineno-34-15"></a>    Property&lt;Boolean&gt; getGenerateAsync();
+</span><span id="__span-34-16"><a id="__codelineno-34-16" name="__codelineno-34-16" href="#__codelineno-34-16"></a>}
 </span></code></pre></div>
-<p>As with Detekt, we also need to wire our DCL configuration to the actual SQLDelight plugin at runtime.
-The wiring is handled in another <a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/sqldelight/SqlDelightSupport.java">support class</a>:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-39-1"><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a>public static void wireSqlDelight(Project project, CustomDesktopComposeApplication projectDefinition) {
-</span><span id="__span-39-2"><a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>        /*
-</span><span id="__span-39-3"><a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>         * It's necessary to defer checking the NDOC in our extension for contents until after project evaluation.
-</span><span id="__span-39-4"><a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>         * If you move the check below outside of afterEvaluate, it fails.  Inside, it succeeds.
-</span><span id="__span-39-5"><a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a>         * Without the afterEvaluate, the databases is seen as empty, and the plugin fails, with this warning:
-</span><span id="__span-39-6"><a id="__codelineno-39-6" name="__codelineno-39-6" href="#__codelineno-39-6"></a>         * https://github.com/plangrid/sqldelight/blob/917cb8e5ee437d37bfdbdcbb3fded09b683fe826/sqldelight-gradle-plugin/src/main/kotlin/app/cash/sqldelight/gradle/SqlDelightPlugin.kt#L112
-</span><span id="__span-39-7"><a id="__codelineno-39-7" name="__codelineno-39-7" href="#__codelineno-39-7"></a>         */
-</span><span id="__span-39-8"><a id="__codelineno-39-8" name="__codelineno-39-8" href="#__codelineno-39-8"></a>        project.afterEvaluate(p -&gt; {
-</span><span id="__span-39-9"><a id="__codelineno-39-9" name="__codelineno-39-9" href="#__codelineno-39-9"></a>            if (needToWireSqlDelight(projectDefinition)) {
-</span><span id="__span-39-10"><a id="__codelineno-39-10" name="__codelineno-39-10" href="#__codelineno-39-10"></a>                project.getPluginManager().apply("app.cash.sqldelight");
-</span><span id="__span-39-11"><a id="__codelineno-39-11" name="__codelineno-39-11" href="#__codelineno-39-11"></a>
-</span><span id="__span-39-12"><a id="__codelineno-39-12" name="__codelineno-39-12" href="#__codelineno-39-12"></a>                projectDefinition.getKotlinApplication().getTargets().jvm(jvmTarget -&gt; {
-</span><span id="__span-39-13"><a id="__codelineno-39-13" name="__codelineno-39-13" href="#__codelineno-39-13"></a>                    jvmTarget.getDependencies().getImplementation().add("app.cash.sqldelight:runtime:2.0.2");
-</span><span id="__span-39-14"><a id="__codelineno-39-14" name="__codelineno-39-14" href="#__codelineno-39-14"></a>                    jvmTarget.getDependencies().getImplementation().add("app.cash.sqldelight:coroutines-extensions:2.0.2");
-</span><span id="__span-39-15"><a id="__codelineno-39-15" name="__codelineno-39-15" href="#__codelineno-39-15"></a>                    jvmTarget.getDependencies().getImplementation().add("app.cash.sqldelight:sqlite-driver:2.0.2");
-</span><span id="__span-39-16"><a id="__codelineno-39-16" name="__codelineno-39-16" href="#__codelineno-39-16"></a>                });
-</span><span id="__span-39-17"><a id="__codelineno-39-17" name="__codelineno-39-17" href="#__codelineno-39-17"></a>
-</span><span id="__span-39-18"><a id="__codelineno-39-18" name="__codelineno-39-18" href="#__codelineno-39-18"></a>                SqlDelightExtension sqlDelight = project.getExtensions().getByType(SqlDelightExtension.class);
-</span><span id="__span-39-19"><a id="__codelineno-39-19" name="__codelineno-39-19" href="#__codelineno-39-19"></a>                projectDefinition.getSqlDelight().getDatabases().forEach(dslModelDatabase -&gt; {
-</span><span id="__span-39-20"><a id="__codelineno-39-20" name="__codelineno-39-20" href="#__codelineno-39-20"></a>                    sqlDelight.getDatabases().create(dslModelDatabase.getName(), database -&gt; {
-</span><span id="__span-39-21"><a id="__codelineno-39-21" name="__codelineno-39-21" href="#__codelineno-39-21"></a>                        database.getPackageName().set(dslModelDatabase.getPackageName());
-</span><span id="__span-39-22"><a id="__codelineno-39-22" name="__codelineno-39-22" href="#__codelineno-39-22"></a>                        database.getVerifyDefinitions().set(dslModelDatabase.getVerifyDefinitions());
-</span><span id="__span-39-23"><a id="__codelineno-39-23" name="__codelineno-39-23" href="#__codelineno-39-23"></a>                        database.getVerifyMigrations().set(dslModelDatabase.getVerifyMigrations());
-</span><span id="__span-39-24"><a id="__codelineno-39-24" name="__codelineno-39-24" href="#__codelineno-39-24"></a>                        database.getDeriveSchemaFromMigrations().set(dslModelDatabase.getDeriveSchemaFromMigrations());
-</span><span id="__span-39-25"><a id="__codelineno-39-25" name="__codelineno-39-25" href="#__codelineno-39-25"></a>                        database.getGenerateAsync().set(dslModelDatabase.getGenerateAsync());
-</span><span id="__span-39-26"><a id="__codelineno-39-26" name="__codelineno-39-26" href="#__codelineno-39-26"></a>                    });
-</span><span id="__span-39-27"><a id="__codelineno-39-27" name="__codelineno-39-27" href="#__codelineno-39-27"></a>                });
-</span><span id="__span-39-28"><a id="__codelineno-39-28" name="__codelineno-39-28" href="#__codelineno-39-28"></a>            }
-</span><span id="__span-39-29"><a id="__codelineno-39-29" name="__codelineno-39-29" href="#__codelineno-39-29"></a>        });
-</span><span id="__span-39-30"><a id="__codelineno-39-30" name="__codelineno-39-30" href="#__codelineno-39-30"></a>    }
+<p>As with Detekt, we also need to wire our DCL configuration to the actual SQLDelight plugin at runtime.</p>
+<p>The wiring is handled in the <code>SqlDelightProjectFeaturePlugin.Binding</code> class:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-35-1"><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a>static class Binding implements ProjectFeatureBinding {
+</span><span id="__span-35-2"><a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    @Override
+</span><span id="__span-35-3"><a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a>    public void bind(ProjectFeatureBindingBuilder builder) {
+</span><span id="__span-35-4"><a id="__codelineno-35-4" name="__codelineno-35-4" href="#__codelineno-35-4"></a>        builder.bindProjectFeatureToBuildModel("sqlDelight", SqlDelight.class, KotlinMultiplatformBuildModel.class,
+</span><span id="__span-35-5"><a id="__codelineno-35-5" name="__codelineno-35-5" href="#__codelineno-35-5"></a>            (context, definition, buildModel, parent) -&gt; {
+</span><span id="__span-35-6"><a id="__codelineno-35-6" name="__codelineno-35-6" href="#__codelineno-35-6"></a>                Project project = context.getProject();
+</span><span id="__span-35-7"><a id="__codelineno-35-7" name="__codelineno-35-7" href="#__codelineno-35-7"></a>
+</span><span id="__span-35-8"><a id="__codelineno-35-8" name="__codelineno-35-8" href="#__codelineno-35-8"></a>                definition.getVersion().convention("2.0.2");
+</span><span id="__span-35-9"><a id="__codelineno-35-9" name="__codelineno-35-9" href="#__codelineno-35-9"></a>
+</span><span id="__span-35-10"><a id="__codelineno-35-10" name="__codelineno-35-10" href="#__codelineno-35-10"></a>                KotlinMultiplatformBuildModel parentBuildModel = context.getBuildModel(parent);
+</span><span id="__span-35-11"><a id="__codelineno-35-11" name="__codelineno-35-11" href="#__codelineno-35-11"></a>                parentBuildModel.getKotlinMultiplatformExtension().jvm(jvmTarget -&gt; {
+</span><span id="__span-35-12"><a id="__codelineno-35-12" name="__codelineno-35-12" href="#__codelineno-35-12"></a>                    NamedDomainObjectProvider&lt;DependencyScopeConfiguration&gt; sqlDelightConfiguration = project.getConfigurations().dependencyScope("sqlDelightTool", conf -&gt; {
+</span><span id="__span-35-13"><a id="__codelineno-35-13" name="__codelineno-35-13" href="#__codelineno-35-13"></a>                        stream(SQLDELIGHT_DEPENDENCY_MODULES).forEach(module -&gt;
+</span><span id="__span-35-14"><a id="__codelineno-35-14" name="__codelineno-35-14" href="#__codelineno-35-14"></a>                            conf.getDependencies().addLater(definition.getVersion().map(version -&gt; project.getDependencyFactory().create(SQLDELIGHT_GROUP + ":" +module + ":" + version)))
+</span><span id="__span-35-15"><a id="__codelineno-35-15" name="__codelineno-35-15" href="#__codelineno-35-15"></a>                        );
+</span><span id="__span-35-16"><a id="__codelineno-35-16" name="__codelineno-35-16" href="#__codelineno-35-16"></a>                    });
+</span><span id="__span-35-17"><a id="__codelineno-35-17" name="__codelineno-35-17" href="#__codelineno-35-17"></a>
+</span><span id="__span-35-18"><a id="__codelineno-35-18" name="__codelineno-35-18" href="#__codelineno-35-18"></a>                    project.getConfigurations().named(jvmTarget.getCompilations().getByName("main").getDefaultSourceSet().getImplementationConfigurationName(), conf -&gt;
+</span><span id="__span-35-19"><a id="__codelineno-35-19" name="__codelineno-35-19" href="#__codelineno-35-19"></a>                            conf.extendsFrom(sqlDelightConfiguration.get())
+</span><span id="__span-35-20"><a id="__codelineno-35-20" name="__codelineno-35-20" href="#__codelineno-35-20"></a>                    );
+</span><span id="__span-35-21"><a id="__codelineno-35-21" name="__codelineno-35-21" href="#__codelineno-35-21"></a>                });
+</span><span id="__span-35-22"><a id="__codelineno-35-22" name="__codelineno-35-22" href="#__codelineno-35-22"></a>
+</span><span id="__span-35-23"><a id="__codelineno-35-23" name="__codelineno-35-23" href="#__codelineno-35-23"></a>                project.afterEvaluate(p -&gt; {
+</span><span id="__span-35-24"><a id="__codelineno-35-24" name="__codelineno-35-24" href="#__codelineno-35-24"></a>                    project.getPluginManager().apply("app.cash.sqldelight");
+</span><span id="__span-35-25"><a id="__codelineno-35-25" name="__codelineno-35-25" href="#__codelineno-35-25"></a>                    ((DefaultSqlDelightBuildModel)buildModel).setSqlDelightExtension(project.getExtensions().getByType(SqlDelightExtension.class));
+</span><span id="__span-35-26"><a id="__codelineno-35-26" name="__codelineno-35-26" href="#__codelineno-35-26"></a>
+</span><span id="__span-35-27"><a id="__codelineno-35-27" name="__codelineno-35-27" href="#__codelineno-35-27"></a>                    definition.getDatabases().forEach(featureDatabase -&gt; {
+</span><span id="__span-35-28"><a id="__codelineno-35-28" name="__codelineno-35-28" href="#__codelineno-35-28"></a>                        buildModel.getSqlDelightExtension().getDatabases().create(featureDatabase.getName(), database -&gt; {
+</span><span id="__span-35-29"><a id="__codelineno-35-29" name="__codelineno-35-29" href="#__codelineno-35-29"></a>                            database.getPackageName().set(featureDatabase.getPackageName());
+</span><span id="__span-35-30"><a id="__codelineno-35-30" name="__codelineno-35-30" href="#__codelineno-35-30"></a>                            database.getVerifyDefinitions().set(featureDatabase.getVerifyDefinitions());
+</span><span id="__span-35-31"><a id="__codelineno-35-31" name="__codelineno-35-31" href="#__codelineno-35-31"></a>                            database.getVerifyMigrations().set(featureDatabase.getVerifyMigrations());
+</span><span id="__span-35-32"><a id="__codelineno-35-32" name="__codelineno-35-32" href="#__codelineno-35-32"></a>                            database.getDeriveSchemaFromMigrations().set(featureDatabase.getDeriveSchemaFromMigrations());
+</span><span id="__span-35-33"><a id="__codelineno-35-33" name="__codelineno-35-33" href="#__codelineno-35-33"></a>                            database.getGenerateAsync().set(featureDatabase.getGenerateAsync());
+</span><span id="__span-35-34"><a id="__codelineno-35-34" name="__codelineno-35-34" href="#__codelineno-35-34"></a>                        });
+</span><span id="__span-35-35"><a id="__codelineno-35-35" name="__codelineno-35-35" href="#__codelineno-35-35"></a>                    });
+</span><span id="__span-35-36"><a id="__codelineno-35-36" name="__codelineno-35-36" href="#__codelineno-35-36"></a>                });
+</span><span id="__span-35-37"><a id="__codelineno-35-37" name="__codelineno-35-37" href="#__codelineno-35-37"></a>            }
+</span><span id="__span-35-38"><a id="__codelineno-35-38" name="__codelineno-35-38" href="#__codelineno-35-38"></a>        ).withBuildModelImplementationType(DefaultSqlDelightBuildModel.class);
+</span><span id="__span-35-39"><a id="__codelineno-35-39" name="__codelineno-35-39" href="#__codelineno-35-39"></a>    }
+</span><span id="__span-35-40"><a id="__codelineno-35-40" name="__codelineno-35-40" href="#__codelineno-35-40"></a>}
 </span></code></pre></div>
-<p>The <code>needToWireSqlDelight</code> method simply checks if <code>getDatabases().isEmpty()</code>.
-Initially, we wanted our wiring logic to avoid using <code>project.afterEvaluate</code> at all until <em>after</em> calling this method to check for databases in the container.
-We thought: Why add an extra <code>project.afterEvaluate</code> callback unless we know we’re actually making use of SQLDelight by adding a database to the container in our extension?
+<p>We thought: Why add an extra <code>project.afterEvaluate</code> callback unless we know we’re actually making use of SQLDelight by adding a database to the container in our extension?
 Because the contents of the <code>NDOC</code> are only available <em>after</em> project evaluation, this won’t work.
 Assuming they will be ready earlier is an easy mistake to make when using an <code>NDOC</code>.</p>
 <p>Other than this wrinkle, the rest of the wiring code should look familiar.
 Since the SQLDelight plugin uses lazy Properties, we call <code>set(Provider)</code> and supply our extension's properties <em>without</em> calling <code>get()</code> to realize their values.
 This is how we envision most wiring working when the Provider API is present on both the plugin we are configuring and the declarative extension holding the values we are configuring it from.</p>
 <p>In addition to applying the plugin and configuring its extension, we add the runtime dependencies needed by SQLDelight to the implementation configuration of the project’s JVM target.</p>
-<h4 id="supporting-compose">Supporting Compose<a class="headerlink" href="#supporting-compose" title="Permanent link">#</a></h4>
-<p>Supporting Compose follows same foundational process we used for Detek or SQLDelightt. 
-However, the Compose plugin’s configuration introduces significatly more complexity.
-To support this, we’ve used multiple levels of nesting to build a DSL that simplifies some of the Compose plugin’s extensions but is, in some ways, limited by our DCL's current feature set. </p>
-<p>But designing Compose support for our <code>desktopComposeApp</code> Project Type still remains the same core process:
-1. Build new DSL extensions to hold the configuration data needed by the plugin
-2. Move the configuration from the imperative part of our buildscript into the new blocks using the property types
-3. Write code to be called by our plugin during application to wire values from our DCL extension into the (Compose) plugin’s extension in an <code>afterEvaluate</code> closure</p>
-<p>You can see the original Compose DSL configuration in the imperative buildscript <a href="https://github.com/gradle/gradle-client/blob/b498fd896d858aecf4403ab077a4ea14bcd484d0/gradle-client/build.gradle.kts">before migration</a> and the resulting DCL DSL <a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/detekt/DetektSupport.java">after migration</a>.
-Rather than walk through the full implementation line-by-line (which closely mirrors the structure of the Detekt and SQLDelight support), we’ll highlight a few notable aspects of our Compose support.</p>
-<h5 id="simulating-map-support-with-ndocs">Simulating Map Support with <code>NDOC</code>s<a class="headerlink" href="#simulating-map-support-with-ndocs" title="Permanent link">#</a></h5>
-<p>One element in the Compose DCL block that might catch your eye is the <code>jvmArgs</code> section:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-40-1"><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a>jvmArgs {
-</span><span id="__span-40-2"><a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a>    jvmArg("-Xms") {
-</span><span id="__span-40-3"><a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a>        value = "35m"
-</span><span id="__span-40-4"><a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a>    }
-</span><span id="__span-40-5"><a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a>    jvmArg("-Xmx") {
-</span><span id="__span-40-6"><a id="__codelineno-40-6" name="__codelineno-40-6" href="#__codelineno-40-6"></a>        value = "128m"
-</span><span id="__span-40-7"><a id="__codelineno-40-7" name="__codelineno-40-7" href="#__codelineno-40-7"></a>    }
-</span><span id="__span-40-8"><a id="__codelineno-40-8" name="__codelineno-40-8" href="#__codelineno-40-8"></a>
-</span><span id="__span-40-9"><a id="__codelineno-40-9" name="__codelineno-40-9" href="#__codelineno-40-9"></a>    // This was originally added at an inner nesting level, but it's not clear why
-</span><span id="__span-40-10"><a id="__codelineno-40-10" name="__codelineno-40-10" href="#__codelineno-40-10"></a>    jvmArg("-splash") {
-</span><span id="__span-40-11"><a id="__codelineno-40-11" name="__codelineno-40-11" href="#__codelineno-40-11"></a>        value = ":\"\$APPDIR/resources/splash.png\""
-</span><span id="__span-40-12"><a id="__codelineno-40-12" name="__codelineno-40-12" href="#__codelineno-40-12"></a>    }
-</span><span id="__span-40-13"><a id="__codelineno-40-13" name="__codelineno-40-13" href="#__codelineno-40-13"></a>}
-</span></code></pre></div>
-<p>When you look at the <a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/compose/Compose.java">Compose extension</a>, you’ll see that this block is modeled using an <code>NDOC</code>. 
-That might seem like a strange choice, given that pairs of JVM argument names and their corresponding values are a natural fit for a Map.
-Unfortunately, native <code>Map</code> support was not available at the time of EAP3 (it is targeted for EAP4).</p>
-<p>So if you’re looking at this bit of code and thinking it’s more complex than it should be — don’t worry, we feel the same.
-Once map support lands in a future EAP, we plan to revisit this and simplify the structure considerably.</p>
-<h5 id="buildtypes-simplified">BuildTypes Simplified<a class="headerlink" href="#buildtypes-simplified" title="Permanent link">#</a></h5>
-<p>An area that might give the opposite impression is the support for configuring the <code>release</code> build type:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-41-1"><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a>buildTypes {
-</span><span id="__span-41-2"><a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>    release {
-</span><span id="__span-41-3"><a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a>        proguard {
-</span><span id="__span-41-4"><a id="__codelineno-41-4" name="__codelineno-41-4" href="#__codelineno-41-4"></a>            optimize = false
-</span><span id="__span-41-5"><a id="__codelineno-41-5" name="__codelineno-41-5" href="#__codelineno-41-5"></a>            obfuscate = false
-</span><span id="__span-41-6"><a id="__codelineno-41-6" name="__codelineno-41-6" href="#__codelineno-41-6"></a>            configurationFiles = listOf(layout.projectDirectory.file("proguard-desktop.pro"))
-</span><span id="__span-41-7"><a id="__codelineno-41-7" name="__codelineno-41-7" href="#__codelineno-41-7"></a>        }
-</span><span id="__span-41-8"><a id="__codelineno-41-8" name="__codelineno-41-8" href="#__codelineno-41-8"></a>    }
-</span><span id="__span-41-9"><a id="__codelineno-41-9" name="__codelineno-41-9" href="#__codelineno-41-9"></a>}
-</span></code></pre></div>
-<p>Behind the scenes, this isn’t modeled as a container of user-defined build types (like you might see with NDOCs elsewhere) by the 3rd party Compose plugin.
-Instead, it's implemented using several static nested extensions.
-That’s because the <code>org.jetbrains.compose.desktop.application.dsl.JvmApplicationBuildTypes</code> extension provides a static list of methods that expose predefined build types such as release.
-You can see this in our plugin's support code <a href="https://github.com/gradle/gradle-client/blob/e0b98007a8a1b337729b2df3fb40c80a0fa59e0e/build-logic/plugins/src/main/java/org/gradle/client/softwaretype/compose/ComposeSupport.java#L52">on this line</a> where we call the parameterless <code>buildTypes.getRelease()</code> method directly. </p>
-<h3 id="finish-declarativizing">Finish Declarativizing<a class="headerlink" href="#finish-declarativizing" title="Permanent link">#</a></h3>
-<p>With support for Detekt, SQLDelight, and Compose fully modeled and wired into our custom Project Type, we’re able to migrate all remaining configuration from the imperative parts of our buildscripts into the declarative <code>desktopComposeApp</code> block.</p>
+<h3 id="finish-making-the-build-declarative">Finish making the build declarative<a class="headerlink" href="#finish-making-the-build-declarative" title="Permanent link">#</a></h3>
+<p>With support for Detekt, SQLDelight, and Compose fully modeled and represented as Project Features, we’re able to migrate all remaining configuration from the imperative parts of our buildscripts into the declarative <code>kotlinApplication</code> block.</p>
 <p>At this point, we can rename the buildscripts from <code>build.gradle.kts</code> to <code>build.gradle.dcl</code> and run the build again to verify that everything has been properly wired.</p>
 <p>If this build succeeds, the declarative migration is complete. </p>
 <p>We can move on to end-to-end verification of our project—running the project and confirming that all functionality still works as expected. </p>
@@ -1888,14 +1820,12 @@ You can see this in our plugin's support code <a href="https://github.com/gradle
 Ideally, plugin authors would use Gradle’s lazy Provider API for configuration. That would allow us to connect the lazy properties in our declarative extensions directly to the plugin’s own extension properties immediately when we apply a plugin.
 Unfortunately, most plugins don’t yet support this, so we’re often forced to wire things up in <code>afterEvaluate</code> once all the values set in buildscripts are available programmatically. 
 We hope this situation improves in the future, and we’re actively exploring more elegant solutions through our ongoing Composability and Extensibility work.</p>
-<p>In a more mature Declarative Gradle ecosystem, we envision finding existing Project Type Feature plugins for Detekt, Compose, and SQLDelight. 
-These could be composed together with the existing Kotlin ecosystem plugin to create the equivalent of our <code>desktopComposeApp</code> with a minimum of coding.</p>
 <p>The original project used a <code>compose</code> object, provided by the compose plugin, to access dependency declarations related to the Compose framework.
 Using this object isn’t possible in DCL, because it is not available early enough to be understood when parsing the schema.
 Instead, we determined which coordinates it was requesting and wrote them out as standard GAV strings to use in our dependency declarations.</p>
 <p>One limitation is the inability to add additional imports, which prevents us from calling static methods on types where the static method is not already annotated as <code>@Restricted</code>.
 This prevented us from modeling the <code>copyright</code> property using a <code>Property&lt;Year&gt;</code> and setting it in the DCL like:</p>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-42-1"><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a>copyrightYear = Year.now()
+<div class="language-text highlight"><pre><span></span><code><span id="__span-36-1"><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a>copyrightYear = Year.now()
 </span></code></pre></div>
 <p>This limitation prevented us from modeling values like <a href="https://github.com/gradle/gradle-client/blob/b498fd896d858aecf4403ab077a4ea14bcd484d0/gradle-client/build.gradle.kts#L115">this one</a> as cleanly as we’d like.
 We're exploring ways to address this in future releases.</p>
