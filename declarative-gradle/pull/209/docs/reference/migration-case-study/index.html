@@ -1163,10 +1163,12 @@ You can view the results of the migration by comparing <a href="https://github.c
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
 <p>The Gradle Client is a desktop application built with Kotlin Compose Desktop that uses the Gradle Tooling API to provide a rich GUI for analyzing and manipulating Declarative Gradle builds.
 The particulars of what this application does when run aren’t especially relevant to the migration process, however.  </p>
-<p>The project is structured as a multi-project build that comprises 3 Gradle subprojects:
-- <code>:build-action</code> - a plain Java library 
-- <code>:mutations-demo</code> - a Kotlin JVM library 
-- <code>:gradle-client</code> - the main Kotlin JVM application</p>
+<p>The project is structured as a multi-project build that comprises 3 Gradle subprojects:</p>
+<ul>
+<li><code>:build-action</code> - a plain Java library </li>
+<li><code>:mutations-demo</code> - a Kotlin JVM library </li>
+<li><code>:gradle-client</code> - the main Kotlin JVM application</li>
+</ul>
 <p>We generally followed <a href="../migration-guide/">the migration guide</a> from our documentation.
 However, if you review the repository commits, you'll notice we migrated the <em>most</em> complex project first, which is the opposite of what the guide recommends.</p>
 <p>We chose to start with the <a href="https://github.com/gradle/gradle-client/tree/8d5c4fefb10d7feae402fcae3106310a0495f535/gradle-client"><code>:gradle-client</code> subproject</a>, because it was the most important and feature-rich project.
@@ -1184,17 +1186,21 @@ As the <code>:gradle-client</code> project is a Kotlin Multiplatform project (wh
 </span></code></pre></div>
 <p>Next, we renamed  <code>settings.gradle.kts</code> to <code>settings.gradle.dcl</code>.</p>
 <p>Because the formats are similar for most common settings, the contents didn’t change significantly during the conversion.</p>
-<p>You can compare the changes directly:
-- <a href="https://github.com/gradle/gradle-client/blob/856e92c3746be5c0ab2a3c8fac8e5b88066c0bcf/settings.gradle.dcl">Resulting <code>settings.gradle.dcl</code> file</a>
-- <a href="https://github.com/gradle/gradle-client/blob/8d5c4fefb10d7feae402fcae3106310a0495f535/settings.gradle.kts">Original <code>settings.gradle.kts</code> file</a></p>
-<p>A few changes stand out in the converted settings file:
-- There’s no need for <code>@file:Suppress("UnstableApiUsage")</code>, this is done automatically for Declarative files
-- We’ve added an included build and applied the <code>org.gradle.client.ecosystem.custom-ecosystem</code> plugin (more on these changes below)
-- Content filtering of repositories isn’t available in DCL yet 
-(this is likely to change in a future release, but as it is “merely” a performance optimization here, it can be omitted without impacting build correctness)
-- <code>repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS</code> becomes <code>repositoriesMode = FAIL_ON_PROJECT_REPOS</code>, as DCL automatically understands enum types used in assignments
-- The imperative check for Java 17 is removed
-Declarative projects typically specify the JDK version they require as part of the project definition directly inside their Project Type, so this is no longer necessary</p>
+<p>You can compare the changes directly:</p>
+<ul>
+<li><a href="https://github.com/gradle/gradle-client/blob/856e92c3746be5c0ab2a3c8fac8e5b88066c0bcf/settings.gradle.dcl">Resulting <code>settings.gradle.dcl</code> file</a></li>
+<li><a href="https://github.com/gradle/gradle-client/blob/8d5c4fefb10d7feae402fcae3106310a0495f535/settings.gradle.kts">Original <code>settings.gradle.kts</code> file</a></li>
+</ul>
+<p>A few changes stand out in the converted settings file:</p>
+<ul>
+<li>There’s no need for <code>@file:Suppress("UnstableApiUsage")</code>, this is done automatically for Declarative files</li>
+<li>We’ve added an included build and applied the <code>org.gradle.client.ecosystem.custom-ecosystem</code> plugin (more on these changes below)</li>
+<li>Content filtering of repositories isn’t available in DCL yet 
+(this is likely to change in a future release, but as it is “merely” a performance optimization here, it can be omitted without impacting build correctness)</li>
+<li><code>repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS</code> becomes <code>repositoriesMode = FAIL_ON_PROJECT_REPOS</code>, as DCL automatically understands enum types used in assignments</li>
+<li>The imperative check for Java 17 is removed
+Declarative projects typically specify the JDK version they require as part of the project definition directly inside their Project Type, so this is no longer necessary</li>
+</ul>
 <h2 id="migrating-incrementally">Migrating Incrementally<a class="headerlink" href="#migrating-incrementally" title="Permanent link">#</a></h2>
 <p>Attempting to convert an entire build to DCL in one step is rarely practical except for the simplest builds.
 Fortunately, migrations can be done incrementally, both across the build and within individual projects. 
@@ -1285,9 +1291,11 @@ We included the project in the included build’s <code>settings.gradle.dcl</cod
 In <code>build-logic/plugins</code>, we created a <code>build.gradle.dcl</code> file with an empty top-level <code>javaGradlePlugin {}</code> block. 
 This is where we will register our new plugins.</p>
 <p>While we could have registered the plugins directly in the root project of the <code>:build-logic</code> build, this extra level of separation could be useful if you have other imperative logic to migrate that wouldn’t be entirely contained in new Project Features.</p>
-<p>This structure allows for:
-- Creating other plugins, such as other settings plugins that provide additional task types or global configuration that you could then apply to your build.
-- Keeping different types of logic isolated from the projects that produce your Project Feature plugins.</p>
+<p>This structure allows for:</p>
+<ul>
+<li>Creating other plugins, such as other settings plugins that provide additional task types or global configuration that you could then apply to your build.</li>
+<li>Keeping different types of logic isolated from the projects that produce your Project Feature plugins.</li>
+</ul>
 <h3 id="writing-a-new-project-feature-plugin">Writing a New Project Feature Plugin<a class="headerlink" href="#writing-a-new-project-feature-plugin" title="Permanent link">#</a></h3>
 <p>The project we’re migrating is a Compose Desktop application written in Kotlin.
 To support it declaratively, we’ll define a custom Project Feature plugin that provides Compose functionality. 
@@ -1348,12 +1356,12 @@ We do this by annotating the plugin class with <code>@BindsProjectFeature</code>
 </span><span id="__span-10-21"><a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a>    }
 </span><span id="__span-10-22"><a id="__codelineno-10-22" name="__codelineno-10-22" href="#__codelineno-10-22"></a>}
 </span></code></pre></div>
-<p>Notice that the call to the binding method provides all the necessary information to connect our feature to the declarative DSL.<br>
-First, we specify the name of the feature as it will appear in DCL files: <code>compose</code>.<br>
-Second, we specify the definition type of our feature: <code>Compose.class</code>.<br>
-Third, we specify the target type that the feature can be bound to: <code>KotlinMultiplatformBuildModel.class</code> (since our feature is intended to be used with KMP projects).<br>
+<p>Notice that the call to the binding method provides all the necessary information to connect our feature to the declarative DSL.
+First, we specify the name of the feature as it will appear in DCL files: <code>compose</code>.
+Second, we specify the definition type of our feature: <code>Compose.class</code>.
+Third, we specify the target type that the feature can be bound to: <code>KotlinMultiplatformBuildModel.class</code> (since our feature is intended to be used with KMP projects).
 Finally, we provide a lambda that will be called to configure the build model based on the definition.</p>
-<p>We specified the target type as <code>KotlinMultiplatformBuildModel.class</code> because we want this feature to be available for KMP projects.<br>
+<p>We specified the target type as <code>KotlinMultiplatformBuildModel.class</code> because we want this feature to be available for KMP projects.
 We are binding to a <em>build model</em> type, rather than a <em>definition</em> type.
 We <em>could</em> bind to a definition type if we wanted to be very specific, but we should be interacting with our target through its build model, so as long as the build model conforms to our expectations, we don't actually care what the target definition is.
 So instead, we are saying that this feature will work with <em>any</em> definition that has a <code>KotlinMultiplatformBuildModel</code> build model type (or subtype).
@@ -1372,10 +1380,12 @@ Because plugin application is imperative.</p>
 Plugins contain imperative logic and are applied imperatively, so they do not belong in a project’s DCL file.</p>
 <p>You can read more about Declarative Gradle design principles in our <a href="https://blog.gradle.org/declarative-gradle-first-eap#developer-first-configuration">blog post</a>.</p>
 <p>To make a Project Feature available to a project, you apply an Ecosystem Plugin.
-An Ecosystem Plugin:
-- Implements <code>Plugin&lt;Settings&gt;</code>
-- Is applied prior to project configuration
-- Tells Gradle about Project Types and/or Features that will be used by projects in a build</p>
+An Ecosystem Plugin:</p>
+<ul>
+<li>Implements <code>Plugin&lt;Settings&gt;</code></li>
+<li>Is applied prior to project configuration</li>
+<li>Tells Gradle about Project Types and/or Features that will be used by projects in a build</li>
+</ul>
 <p>In our case, we create our Ecosystem Plugin in  <code>build-logic/plugins/src/main/java/org/gradle/client/ecosystem/CustomEcosystemPlugin.java</code>:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>package org.gradle.client.ecosystem;
 </span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>
@@ -1513,10 +1523,12 @@ At this stage, there are multiple ways to approach the problem, and which one wo
 <p>Let’s continue our implementation of the Compose feature.</p>
 <h4 id="supporting-compose">Supporting Compose<a class="headerlink" href="#supporting-compose" title="Permanent link">#</a></h4>
 <p>To support Compose, we used multiple levels of nesting to build a DSL that simplifies some of the Compose plugin’s extensions but is, in some ways, limited by our DCL's current feature set.</p>
-<p>Designing Compose support involves the following:
-1. Build new DSL definition objects to hold the configuration data needed by the plugin
-2. Move the configuration from the imperative part of our buildscript into the new blocks using the definition types
-3. Write code to be called by our plugin during application to wire values from our definition into the (Compose) plugin’s extension in an <code>afterEvaluate</code> closure</p>
+<p>Designing Compose support involves the following:</p>
+<ol>
+<li>Build new DSL definition objects to hold the configuration data needed by the plugin</li>
+<li>Move the configuration from the imperative part of our buildscript into the new blocks using the definition types</li>
+<li>Write code to be called by our plugin during application to wire values from our definition into the (Compose) plugin’s extension in an <code>afterEvaluate</code> closure</li>
+</ol>
 <p>You can see the original Compose DSL configuration in the imperative buildscript <a href="https://github.com/gradle/gradle-client/blob/b498fd896d858aecf4403ab077a4ea14bcd484d0/gradle-client/build.gradle.kts#L97-L147">before migration</a> and the resulting DCL <a href="https://github.com/gradle/gradle-client/blob/2b52c756913e201e283eed9ccbed9ce95e53004e/gradle-client/build.gradle.dcl#L87-L155">after migration</a>.
 Rather than walk through the full implementation line-by-line (which closely mirrors the structure of the Detekt and SQLDelight support), we’ll highlight a few notable aspects of our Compose support.</p>
 <h5 id="representing-jvm-arguments-with-ndocs">Representing JVM arguments with <code>NDOC</code>s<a class="headerlink" href="#representing-jvm-arguments-with-ndocs" title="Permanent link">#</a></h5>
@@ -1536,9 +1548,9 @@ Rather than walk through the full implementation line-by-line (which closely mir
 </span><span id="__span-20-13"><a id="__codelineno-20-13" name="__codelineno-20-13" href="#__codelineno-20-13"></a>}
 </span></code></pre></div>
 <p>When you look at the <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/Compose.java">Compose definition</a>, you’ll see that this block is modeled using an <code>NDOC</code>.
-That might seem like a strange choice, given that not all JVM arguments manifest in a similar manner.<br>
-For instance, some JVM arguments are flags that don’t take a value, while others are a name-value pair that are concatenated into a single argument on the command line, and yet other arguments are name-value pairs that are passed as two separate command line arguments.<br>
-In other words, a collection of JVM arguments would be better represented as a more nuanced data structure.<br>
+That might seem like a strange choice, given that not all JVM arguments manifest in a similar manner.
+For instance, some JVM arguments are flags that don’t take a value, while others are a name-value pair that are concatenated into a single argument on the command line, and yet other arguments are name-value pairs that are passed as two separate command line arguments.
+In other words, a collection of JVM arguments would be better represented as a more nuanced data structure.
 In fact, arguments for a JVM are a cross-cutting concern that could be expressed by a common building-block type and reused in many different places in the DSL.</p>
 <p>So if you’re looking at this bit of code and thinking it’s both more complex and more limited than it should be — don’t worry, we feel the same.
 In future versions of Gradle, we expect to provide better support for concepts like polymorphic domain object containers and common building blocks that can be reused across different Project Types and/or Features.</p>
@@ -1557,13 +1569,13 @@ In future versions of Gradle, we expect to provide better support for concepts l
 <p>Behind the scenes, this isn’t modeled as a container of user-defined build types (like you might see with NDOCs elsewhere) by the 3rd party Compose plugin.
 Instead, it's implemented using several static nested extensions.
 That’s because the <code>org.jetbrains.compose.desktop.application.dsl.JvmApplicationBuildTypes</code> extension provides a static list of methods that expose predefined build types such as release.
-You can see this in our feature's <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java#L68">on this line</a> where we call the parameterless <code>buildTypes.getRelease()</code> method directly.</p>
+You can see this in our feature <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java#L68">on this line</a> where we call the parameterless <code>buildTypes.getRelease()</code> method directly.</p>
 <h5 id="defining-a-build-model">Defining a Build Model<a class="headerlink" href="#defining-a-build-model" title="Permanent link">#</a></h5>
-<p>In order to implement our compose feature, we need to define a build model for it.<br>
-The build model represents how we want to deal with the low-level details of the compose plugin internally, and how we want other build logic to potentially interact with our feature.<br>
+<p>In order to implement our compose feature, we need to define a build model for it.
+The build model represents how we want to deal with the low-level details of the compose plugin internally, and how we want other build logic to potentially interact with our feature.
 In many ways, it represents the "API" of our feature.</p>
 <p>However, unlike a completely new feature, we’re building a feature on top of an existing 3rd party plugin.
-This means our feature mostly exists to configure the existing plugin, and implements little to no build logic itself.<br>
+This means our feature mostly exists to configure the existing plugin, and implements little to no build logic itself.
 Our interface to the legacy plugin is the extension it provides, so the <code>ComposeExtension</code> object is essentially our build model.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>package org.gradle.client.projectfeatures.compose;
 </span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
@@ -1610,9 +1622,11 @@ However, this seems like a lot of ceremony in order to wire an existing extensio
 In future versions of Gradle, we expect to provide simpler ways to wrap existing plugin extensions into build models.
 Ideally, this would be as simple as declaring that a specific property in the build model represents a project extension and then there would be no need for a separate implementation type - Gradle would simply handle the wiring automatically when instantiating the build model.</p>
 <h4 id="supporting-detekt">Supporting Detekt<a class="headerlink" href="#supporting-detekt" title="Permanent link">#</a></h4>
-<p>When supporting a third-party plugin like Detekt, there are typically two steps involved:
-1. We need to create a new nested block in our Project Type to hold configuration data for that plugin
-2. We need to apply the plugin wiring that configuration data as needed</p>
+<p>When supporting a third-party plugin like Detekt, there are typically two steps involved:</p>
+<ol>
+<li>We need to create a new nested block in our Project Type to hold configuration data for that plugin</li>
+<li>We need to apply the plugin wiring that configuration data as needed</li>
+</ol>
 <p>The existing block used to configure Detekt in the imperative buildscript is quite simple:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a>detekt {
 </span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>    source.setFrom("src/jvmMain/kotlin", "src/jvmTest/kotlin")
