@@ -753,7 +753,7 @@
   
   
   <span class="md-ellipsis">
-    Project Features
+    Software Features
     
   </span>
   
@@ -1476,9 +1476,11 @@ For example, in a typical Kotlin project (like <code>:mutations-demo</code>), yo
 </span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>}
 </span></code></pre></div>
 <p>There is a degree of abstraction and reuse here that adds some complexity, but the core idea is simple.
-In essence, to declare dependencies declaratively, we expose a nested extension that:
-- Implements <code>org.gradle.api.artifacts.dsl.Dependencies</code>, and
-- Provides one or more getters that return a <code>org.gradle.api.artifacts.dsl.DependencyCollector</code></p>
+In essence, to declare dependencies declaratively, we expose a nested extension that:</p>
+<ul>
+<li>Implements <code>org.gradle.api.artifacts.dsl.Dependencies</code>, and</li>
+<li>Provides one or more getters that return a <code>org.gradle.api.artifacts.dsl.DependencyCollector</code></li>
+</ul>
 <p>When Gradle processes a DCL (or Kotlin DSL) file and finds Project Types it looks within their extension classes for any <code>@Nested</code> types that implement <code>Dependencies</code>, and records the <code>DependencyCollector</code> getter methods.
 This allows method calls like <code>implementation(&lt;some coordinates string&gt;)</code> or <code>api(project(&lt;some project&gt;))</code> to map correctly to overloads of the <code>DependencyCollector.add(...)</code> present on the collectors returned by those getters.
 It may look like magic, but it’s well-supported, and tools like IDEs understand these conventions through the Gradle Tooling API.</p>
@@ -1569,7 +1571,7 @@ In future versions of Gradle, we expect to provide better support for concepts l
 <p>Behind the scenes, this isn’t modeled as a container of user-defined build types (like you might see with NDOCs elsewhere) by the 3rd party Compose plugin.
 Instead, it's implemented using several static nested extensions.
 That’s because the <code>org.jetbrains.compose.desktop.application.dsl.JvmApplicationBuildTypes</code> extension provides a static list of methods that expose predefined build types such as release.
-You can see this in our feature <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java#L68">on this line</a> where we call the parameterless <code>buildTypes.getRelease()</code> method directly.</p>
+You can see this in our feature <a href="https://github.com/gradle/gradle-client/blob/119811ff8b44dfb7b812fc8428dd30d5f680959b/build-logic/plugins/src/main/java/org/gradle/client/projectfeatures/compose/ComposeProjectFeaturePlugin.java#L68">on this line</a> where we call the parameter-less <code>buildTypes.getRelease()</code> method directly.</p>
 <h5 id="defining-a-build-model">Defining a Build Model<a class="headerlink" href="#defining-a-build-model" title="Permanent link">#</a></h5>
 <p>In order to implement our compose feature, we need to define a build model for it.
 The build model represents how we want to deal with the low-level details of the compose plugin internally, and how we want other build logic to potentially interact with our feature.
@@ -1586,7 +1588,7 @@ Our interface to the legacy plugin is the extension it provides, so the <code>Co
 </span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a>    ComposeExtension getComposeExtension();
 </span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a>}
 </span></code></pre></div>
-<p>We need to be able to set the extension in our build model, but we don't want to expose the ability to set the extension to other build logic.
+<p>We also need to be able to set the extension in our build model, but we don't want to expose the ability to set the extension to other build logic.
 To achieve this, we provide an implementation type for our build model that exposes a setter for the extension, but we keep the interface clean by only exposing the getter to other build logic.</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>package org.gradle.client.projectfeatures.compose;
 </span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>
@@ -1618,7 +1620,7 @@ We do this by setting the implementation class in the binding:</p>
 </span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a>    }
 </span></code></pre></div>
 <p>We can now query and set the <code>ComposeExtension</code> instance from the third party plugin when applying the feature.<br>
-However, this seems like a lot of ceremony in order to wire an existing extension into our build model.
+However, this seems like a lot of ceremony in order to wire an existing extension into our build model, doesn't it?
 In future versions of Gradle, we expect to provide simpler ways to wrap existing plugin extensions into build models.
 Ideally, this would be as simple as declaring that a specific property in the build model represents a project extension and then there would be no need for a separate implementation type - Gradle would simply handle the wiring automatically when instantiating the build model.</p>
 <h4 id="supporting-detekt">Supporting Detekt<a class="headerlink" href="#supporting-detekt" title="Permanent link">#</a></h4>
