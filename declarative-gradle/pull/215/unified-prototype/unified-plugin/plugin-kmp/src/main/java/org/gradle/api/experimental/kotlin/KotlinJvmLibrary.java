@@ -1,0 +1,15 @@
+package org.gradle.api.experimental.kotlin;
+
+import org.gradle.api.experimental.jvm.HasJavaTarget;
+import org.gradle.api.experimental.common.HasLibraryDependencies;
+import org.gradle.api.experimental.kotlin.testing.Testing;
+import org.gradle.api.internal.plugins.Definition;
+import org.gradle.api.tasks.Nested;
+
+/**
+ * A library implemented using Kotlin and that targets a single JVM version.
+ */
+public interface KotlinJvmLibrary extends HasJavaTarget, HasLibraryDependencies, Definition<KotlinJvmLibraryBuildModel> {
+    @Nested
+    Testing getTesting();
+}
