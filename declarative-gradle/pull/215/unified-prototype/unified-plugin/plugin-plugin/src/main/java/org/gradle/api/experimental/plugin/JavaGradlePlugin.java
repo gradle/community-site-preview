@@ -14,6 +14,6 @@ public interface JavaGradlePlugin extends Definition<JavaGradlePluginBuildModel>
 
     @Nested
     JavaGradlePluginDependencies getDependencies();
-    
+
     NamedDomainObjectContainer<PluginRegistration> getRegisters();
 }
