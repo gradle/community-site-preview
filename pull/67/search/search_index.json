@@ -1,0 +1,1 @@
+{"config":{"lang":["en"],"separator":"[\\s\\-]+","pipeline":["stopWordFilter"]},"docs":[{"location":"","title":"Site Shutdown","text":""},{"location":"#this-site-has-been-shut-down","title":"This Site Has Been Shut Down","text":"<p>If you are not redirected automatically, please visit https://community.gradle.org</p>"}]}
