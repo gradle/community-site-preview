@@ -59,7 +59,7 @@ class JavaLibraryWithCheckstyleIntegrationTest extends AbstractSpecification {
         """
 
         when:
-        def result = fails(":checkstyleMain", "--stacktrace")
+        def result = fails(":checkstyleMain")
 
         then:
         result.output.contains("Execution failed for task ':checkstyleMain'.")
