@@ -90,9 +90,6 @@ public abstract class AndroidBindingSupport {
     public static void linkDefinitionToPlugin(Project project, AndroidSoftware definition, CommonExtension android) {
         KotlinAndroidProjectExtension kotlin = project.getExtensions().getByType(KotlinAndroidProjectExtension.class);
 
-        // Link common dependencies
-        linkCommonDependencies(definition.getDependencies(), project.getConfigurations());
-
         // Link common properties
         ifPresent(definition.getNamespace(), android::setNamespace);
         ifPresent(definition.getCompileSdk(), android::setCompileSdk);

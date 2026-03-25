@@ -48,7 +48,7 @@ public abstract class StandaloneAndroidLibraryPlugin implements Plugin<Project> 
                 );
 
                 // Configure android extension from the definition
-                linkDefinitionToPlugin(services.getProject(), definition, buildModel);
+                linkDefinitionToPlugin(services.getProject(), definition, buildModel, services.getProject().getConfigurations());
             })
             .withUnsafeDefinition()
             .withUnsafeApplyAction()
@@ -58,8 +58,9 @@ public abstract class StandaloneAndroidLibraryPlugin implements Plugin<Project> 
         /**
          * Performs linking actions that must occur within an afterEvaluate block.
          */
-        private void linkDefinitionToPlugin(Project project, AndroidLibrary dslModel, AndroidLibraryBuildModel buildModel) {
+        private void linkDefinitionToPlugin(Project project, AndroidLibrary dslModel, AndroidLibraryBuildModel buildModel, ConfigurationContainer configurations) {
             LibraryExtension android = buildModel.getLibraryExtension();
+            linkCommonDependencies(dslModel.getDependencies(), configurations);
             AndroidBindingSupport.linkDefinitionToPlugin(project, dslModel, android);
 
             configureProtobuf(project, dslModel, android);
