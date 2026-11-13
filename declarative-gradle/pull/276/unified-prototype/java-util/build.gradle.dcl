@@ -1,3 +1,0 @@
-javaLibrary {
-    javaVersion = 17
-}
