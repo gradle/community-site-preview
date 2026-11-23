@@ -1,3 +1,0 @@
-swiftLibrary {
-    swiftVersion = 5
-}
